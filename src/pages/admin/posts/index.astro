@@ -1,0 +1,102 @@
+---
+import Header from '../../../components/Header.astro';
+import AdminNav from '../../../components/admin/AdminNav.astro';
+import { getDb, posts } from '../../../lib/db';
+import { desc } from 'drizzle-orm';
+import { parseTags } from '../../../lib/utils';
+import '../../../styles/global.css';
+
+const db = getDb(Astro.locals.runtime.env.DB);
+const allPosts = await db.select().from(posts).orderBy(desc(posts.updatedAt)).all();
+
+const filter = Astro.url.searchParams.get('status') ?? 'all';
+const filtered = filter === 'all' ? allPosts : allPosts.filter((p) => p.status === filter);
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Posts — Admin CatitéoBlog</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+  <Header />
+
+  <div class="max-w-5xl mx-auto px-4 py-8 flex gap-8">
+    <AdminNav />
+
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold">Posts</h1>
+        <a href="/admin/posts/new" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors">
+          + Novo post
+        </a>
+      </div>
+
+      <!-- Status filter -->
+      <div class="flex gap-2 mb-6">
+        {[
+          { value: 'all', label: `Todos (${allPosts.length})` },
+          { value: 'published', label: `Publicados (${allPosts.filter(p => p.status === 'published').length})` },
+          { value: 'draft', label: `Rascunhos (${allPosts.filter(p => p.status === 'draft').length})` },
+        ].map(({ value, label }) => (
+          <a
+            href={`/admin/posts${value === 'all' ? '' : `?status=${value}`}`}
+            class={`text-xs px-3 py-1.5 rounded-lg transition-colors ${filter === value ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100'}`}
+          >
+            {label}
+          </a>
+        ))}
+      </div>
+
+      <!-- Posts list -->
+      {filtered.length === 0 ? (
+        <div class="text-center py-16 text-zinc-600 bg-zinc-900 border border-zinc-800 rounded-xl">
+          Nenhum post encontrado.
+        </div>
+      ) : (
+        <div class="space-y-2">
+          {filtered.map((post) => {
+            const tags = parseTags(post.tags);
+            return (
+              <div class="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 mb-0.5">
+                    <a href={`/admin/posts/${post.id}`} class="text-sm font-medium text-zinc-200 hover:text-zinc-100 truncate">
+                      {post.title}
+                    </a>
+                    <span class={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${
+                      post.status === 'published'
+                        ? 'bg-green-500/10 text-green-400'
+                        : 'bg-yellow-500/10 text-yellow-400'
+                    }`}>
+                      {post.status === 'published' ? '● Publicado' : '○ Rascunho'}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-3 text-xs text-zinc-600">
+                    <span>/blog/{post.slug}</span>
+                    <span>{post.views} views</span>
+                    <span>{post.readingTime} min</span>
+                    {tags.slice(0, 2).map(t => <span>#{t}</span>)}
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  {post.status === 'published' && (
+                    <a href={`/blog/${post.slug}`} target="_blank" class="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
+                      Ver →
+                    </a>
+                  )}
+                  <a href={`/admin/posts/${post.id}`} class="text-xs px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md transition-colors">
+                    Editar
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,213 @@
+---
+import Header from '../../../components/Header.astro';
+import AdminNav from '../../../components/admin/AdminNav.astro';
+import { getDb, posts } from '../../../lib/db';
+import { eq } from 'drizzle-orm';
+import { generateId, slugify, calcReadingTime } from '../../../lib/utils';
+import '../../../styles/global.css';
+
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const title = (form.get('title') as string)?.trim();
+  const content = (form.get('content') as string)?.trim();
+  const excerpt = (form.get('excerpt') as string)?.trim() || null;
+  const coverImage = (form.get('cover_image') as string)?.trim() || null;
+  const tagsRaw = (form.get('tags') as string)?.trim();
+  const status = form.get('status') as string;
+
+  if (!title || !content) {
+    error = 'Título e conteúdo são obrigatórios.';
+  } else {
+    const db = getDb(Astro.locals.runtime.env.DB);
+    const baseSlug = slugify(title);
+    let slug = baseSlug;
+
+    // Ensure unique slug
+    const existing = await db.select().from(posts).where(eq(posts.slug, slug)).get();
+    if (existing) slug = `${baseSlug}-${Date.now()}`;
+
+    const tags = tagsRaw
+      ? JSON.stringify(tagsRaw.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8))
+      : '[]';
+
+    const now = Math.floor(Date.now() / 1000);
+    await db.insert(posts).values({
+      id: generateId(),
+      title,
+      slug,
+      content,
+      excerpt,
+      coverImage,
+      tags,
+      status: status === 'published' ? 'published' : 'draft',
+      readingTime: calcReadingTime(content),
+      publishedAt: status === 'published' ? now : null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return Astro.redirect('/admin/posts');
+  }
+}
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Novo Post — Admin CatitéoBlog</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+  <Header />
+
+  <div class="max-w-5xl mx-auto px-4 py-8 flex gap-8">
+    <AdminNav />
+
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-8">
+        <h1 class="text-2xl font-bold">Novo Post</h1>
+        <a href="/admin/posts" class="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">← Voltar</a>
+      </div>
+
+      {error && (
+        <div class="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">{error}</div>
+      )}
+
+      <form method="POST" class="space-y-5">
+        <div>
+          <label for="title" class="block text-sm font-medium text-zinc-300 mb-1.5">
+            Título <span class="text-red-400">*</span>
+          </label>
+          <input
+            id="title" name="title" type="text" required
+            placeholder="Título do post"
+            class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors"
+          />
+        </div>
+
+        <div>
+          <label for="excerpt" class="block text-sm font-medium text-zinc-300 mb-1.5">
+            Resumo <span class="text-zinc-600">(opcional — aparece nos cards)</span>
+          </label>
+          <input
+            id="excerpt" name="excerpt" type="text"
+            placeholder="Breve descrição do post..."
+            class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors"
+          />
+        </div>
+
+        <div>
+          <label for="cover_image" class="block text-sm font-medium text-zinc-300 mb-1.5">
+            Imagem de capa <span class="text-zinc-600">(URL)</span>
+          </label>
+          <input
+            id="cover_image" name="cover_image" type="url"
+            placeholder="https://..."
+            class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors"
+          />
+        </div>
+
+        <!-- Content editor with tabs -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="content" class="block text-sm font-medium text-zinc-300">
+              Conteúdo (Markdown) <span class="text-red-400">*</span>
+            </label>
+            <div class="flex items-center gap-2">
+              <button type="button" id="btn-summary" class="text-xs px-3 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-md transition-colors">
+                🤖 Gerar resumo IA
+              </button>
+              <button type="button" id="btn-tags" class="text-xs px-3 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 rounded-md transition-colors">
+                🏷️ Sugerir tags IA
+              </button>
+            </div>
+          </div>
+          <textarea
+            id="content" name="content" required rows={24} spellcheck={false}
+            placeholder="# Título&#10;&#10;Escreva seu post em Markdown..."
+            class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 text-sm font-mono text-zinc-200 placeholder-zinc-700 focus:outline-none focus:border-indigo-500 transition-colors resize-y leading-relaxed"
+          ></textarea>
+          <div id="ai-result" class="hidden mt-2 p-3 bg-zinc-900 border border-indigo-500/20 rounded-lg text-sm text-zinc-300"></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="tags" class="block text-sm font-medium text-zinc-300 mb-1.5">
+              Tags <span class="text-zinc-600">(separadas por vírgula)</span>
+            </label>
+            <input
+              id="tags" name="tags" type="text"
+              placeholder="astro, cloudflare, typescript"
+              class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors"
+            />
+          </div>
+
+          <div>
+            <label for="status" class="block text-sm font-medium text-zinc-300 mb-1.5">Status</label>
+            <select
+              id="status" name="status"
+              class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-indigo-500 transition-colors"
+            >
+              <option value="draft">Rascunho</option>
+              <option value="published">Publicar agora</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-lg font-medium text-sm transition-colors">
+            Salvar post
+          </button>
+          <a href="/admin/posts" class="px-6 py-2.5 border border-zinc-700 hover:border-zinc-600 text-zinc-300 rounded-lg text-sm font-medium transition-colors">
+            Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const contentEl = document.getElementById('content') as HTMLTextAreaElement;
+    const tagsEl = document.getElementById('tags') as HTMLInputElement;
+    const aiResult = document.getElementById('ai-result')!;
+
+    async function callAI(endpoint: string, body: object) {
+      aiResult.textContent = 'Gerando...';
+      aiResult.classList.remove('hidden');
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        return await res.json() as { result?: string; error?: string };
+      } catch {
+        return { error: 'Erro de conexão' };
+      }
+    }
+
+    document.getElementById('btn-summary')?.addEventListener('click', async () => {
+      const content = contentEl.value;
+      if (!content.trim()) { alert('Escreva o conteúdo primeiro.'); return; }
+      const data = await callAI('/api/ai/summary', { content });
+      aiResult.textContent = data.result ?? data.error ?? 'Erro desconhecido';
+    });
+
+    document.getElementById('btn-tags')?.addEventListener('click', async () => {
+      const content = contentEl.value;
+      if (!content.trim()) { alert('Escreva o conteúdo primeiro.'); return; }
+      const data = await callAI('/api/ai/tags', { content });
+      if (data.result) {
+        tagsEl.value = data.result;
+        aiResult.textContent = `Tags sugeridas: ${data.result}`;
+        aiResult.classList.remove('hidden');
+      } else {
+        aiResult.textContent = data.error ?? 'Erro ao sugerir tags';
+      }
+    });
+  </script>
+</body>
+</html>

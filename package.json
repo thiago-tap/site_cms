@@ -1,0 +1,32 @@
+{
+  "name": "site-cms",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "deploy": "wrangler pages deploy dist",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 execute site-cms-db --local --file=./drizzle/0000_init.sql",
+    "db:migrate:remote": "wrangler d1 execute site-cms-db --remote --file=./drizzle/0000_init.sql",
+    "type-check": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.6",
+    "@astrojs/cloudflare": "^12.0.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "arctic": "^2.0.0",
+    "astro": "^5.0.0",
+    "drizzle-orm": "^0.44.0",
+    "marked": "^15.0.0",
+    "tailwindcss": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.0.0",
+    "drizzle-kit": "^0.30.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.0.0"
+  }
+}

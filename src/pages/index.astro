@@ -1,0 +1,90 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import PostCard from '../components/PostCard.astro';
+import { getDb, posts } from '../lib/db';
+import { eq, desc } from 'drizzle-orm';
+import '../styles/global.css';
+
+const db = getDb(Astro.locals.runtime.env.DB);
+const allPosts = await db
+  .select()
+  .from(posts)
+  .where(eq(posts.status, 'published'))
+  .orderBy(desc(posts.publishedAt))
+  .all();
+
+const tag = Astro.url.searchParams.get('tag');
+const filteredPosts = tag
+  ? allPosts.filter((p) => {
+      try { return (JSON.parse(p.tags) as string[]).includes(tag); }
+      catch { return false; }
+    })
+  : allPosts;
+
+// Collect all tags for filter
+const allTags = [...new Set(allPosts.flatMap((p) => {
+  try { return JSON.parse(p.tags) as string[]; }
+  catch { return []; }
+}))].sort();
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CatitéoBlog — Desenvolvimento e tecnologia</title>
+  <meta name="description" content="Blog sobre desenvolvimento web, cloud e tecnologia." />
+  <link rel="alternate" type="application/rss+xml" title="CatitéoBlog RSS" href="/rss.xml" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
+  <Header />
+
+  <main class="max-w-4xl mx-auto px-4 py-12 flex-1 w-full">
+    <!-- Hero -->
+    <div class="mb-10">
+      <h1 class="text-4xl font-bold text-zinc-100 mb-2">Blog</h1>
+      <p class="text-zinc-400">Artigos sobre desenvolvimento web, cloud e tecnologia.</p>
+    </div>
+
+    <!-- Tag filter -->
+    {allTags.length > 0 && (
+      <div class="flex flex-wrap gap-2 mb-8">
+        <a
+          href="/"
+          class={`text-xs px-3 py-1 rounded-full transition-colors ${!tag ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100'}`}
+        >
+          Todos
+        </a>
+        {allTags.map((t) => (
+          <a
+            href={`/?tag=${t}`}
+            class={`text-xs px-3 py-1 rounded-full transition-colors ${tag === t ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-100'}`}
+          >
+            #{t}
+          </a>
+        ))}
+      </div>
+    )}
+
+    <!-- Posts -->
+    {filteredPosts.length === 0 ? (
+      <div class="text-center py-20 text-zinc-600">
+        <p class="text-lg">Nenhum post publicado ainda.</p>
+        {Astro.locals.user && (
+          <a href="/admin/posts/new" class="inline-block mt-4 text-indigo-400 hover:text-indigo-300">
+            Criar primeiro post →
+          </a>
+        )}
+      </div>
+    ) : (
+      <div class="grid gap-4 sm:grid-cols-2">
+        {filteredPosts.map((post) => <PostCard post={post} />)}
+      </div>
+    )}
+  </main>
+
+  <Footer />
+</body>
+</html>

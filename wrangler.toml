@@ -1,0 +1,15 @@
+name = "site-cms"
+compatibility_date = "2026-02-19"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "site-cms-db"
+database_id = "SUBSTITUA_PELO_SEU_DATABASE_ID"
+
+[ai]
+binding = "AI"
+
+[vars]
+SITE_URL = "https://cms.catiteo.com"
