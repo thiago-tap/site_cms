@@ -27,7 +27,7 @@ function getMinioClient(env: MinioEnv): S3Client {
 
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
-    const env = locals.runtime.env as Env & Partial<MinioEnv> & { MEDIA_BUCKET?: R2Bucket; SITE_URL?: string };
+    const env = locals.runtime.env as Env & Partial<MinioEnv>;
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -42,26 +42,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
       return Response.json({ error: 'Arquivo muito grande. Máximo 5MB.' }, { status: 400 });
     }
 
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-    const key = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const buffer = await file.arrayBuffer();
-
-    // ── Cloudflare R2 (preferred) ──────────────────────────────────────────────
-    if (env.MEDIA_BUCKET) {
-      await env.MEDIA_BUCKET.put(key, buffer, {
-        httpMetadata: { contentType: file.type },
-      });
-      const siteUrl = (env.SITE_URL ?? 'https://thiago.catiteo.com').replace(/\/$/, '');
-      return Response.json({ ok: true, url: `${siteUrl}/media/${key}` });
-    }
-
-    // ── MinIO fallback ─────────────────────────────────────────────────────────
     if (!env.MINIO_ENDPOINT || !env.MINIO_ACCESS_KEY || !env.MINIO_SECRET_KEY || !env.MINIO_BUCKET) {
       return Response.json(
-        { error: 'Nenhum storage configurado. Configure o bucket R2 (MEDIA_BUCKET) ou MinIO nas variáveis de ambiente.' },
+        { error: 'Storage não configurado. Adicione as variáveis MINIO_* nas configurações do Cloudflare Pages.' },
         { status: 503 }
       );
     }
+
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const key = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const buffer = await file.arrayBuffer();
 
     const client = getMinioClient(env as MinioEnv);
     await client.send(new PutObjectCommand({
