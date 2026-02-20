@@ -1,0 +1,55 @@
+---
+interface Props {
+  url: string;
+  title: string;
+}
+const { url, title } = Astro.props;
+const enc = encodeURIComponent(url);
+const encTitle = encodeURIComponent(title);
+---
+
+<div class="flex flex-wrap items-center gap-3 my-8 pt-8 border-t border-zinc-800 not-prose">
+  <span class="text-sm text-zinc-500 mr-1">Compartilhar:</span>
+
+  <a
+    href={`https://twitter.com/intent/tweet?url=${enc}&text=${encTitle}`}
+    target="_blank" rel="noopener noreferrer"
+    class="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+  >
+    𝕏 Twitter/X
+  </a>
+
+  <a
+    href={`https://www.linkedin.com/shareArticle?mini=true&url=${enc}&title=${encTitle}`}
+    target="_blank" rel="noopener noreferrer"
+    class="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+  >
+    LinkedIn
+  </a>
+
+  <a
+    href={`https://wa.me/?text=${encTitle}%20${enc}`}
+    target="_blank" rel="noopener noreferrer"
+    class="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+  >
+    WhatsApp
+  </a>
+
+  <button
+    id="btn-copy-link"
+    data-url={url}
+    class="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+  >
+    Copiar link
+  </button>
+</div>
+
+<script>
+  const btn = document.getElementById('btn-copy-link') as HTMLButtonElement;
+  btn?.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(btn.dataset.url!);
+    const original = btn.textContent;
+    btn.textContent = '✓ Copiado!';
+    setTimeout(() => { btn.textContent = original; }, 2000);
+  });
+</script>

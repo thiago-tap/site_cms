@@ -1,0 +1,213 @@
+---
+import Header from '../../../components/Header.astro';
+import AdminNav from '../../../components/admin/AdminNav.astro';
+import { getSettings, saveSettings } from '../../../lib/settings';
+import '../../../styles/global.css';
+
+let success = '';
+let error = '';
+
+const db = Astro.locals.runtime.env.DB;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  try {
+    await saveSettings(db, {
+      site_name: (form.get('site_name') as string)?.trim(),
+      site_description: (form.get('site_description') as string)?.trim(),
+      accent_color: (form.get('accent_color') as string)?.trim() || '#6366f1',
+      author_name: (form.get('author_name') as string)?.trim(),
+      author_bio: (form.get('author_bio') as string)?.trim(),
+      author_avatar: (form.get('author_avatar') as string)?.trim(),
+      social_github: (form.get('social_github') as string)?.trim(),
+      social_twitter: (form.get('social_twitter') as string)?.trim(),
+      social_linkedin: (form.get('social_linkedin') as string)?.trim(),
+      social_instagram: (form.get('social_instagram') as string)?.trim(),
+      logo_url: (form.get('logo_url') as string)?.trim(),
+      giscus_repo: (form.get('giscus_repo') as string)?.trim(),
+      giscus_repo_id: (form.get('giscus_repo_id') as string)?.trim(),
+      giscus_category: (form.get('giscus_category') as string)?.trim(),
+      giscus_category_id: (form.get('giscus_category_id') as string)?.trim(),
+      newsletter_enabled: form.get('newsletter_enabled') ? '1' : '0',
+    });
+    success = 'Configurações salvas com sucesso!';
+  } catch {
+    error = 'Erro ao salvar configurações.';
+  }
+}
+
+const config = await getSettings(db);
+
+const inputClass = 'w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors';
+const labelClass = 'block text-sm font-medium text-zinc-300 mb-1.5';
+const hintClass = 'text-xs text-zinc-600 mt-1';
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Configurações — Admin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+  <Header />
+
+  <div class="max-w-5xl mx-auto px-4 py-8 flex gap-8">
+    <AdminNav />
+
+    <div class="flex-1 min-w-0">
+      <h1 class="text-2xl font-bold mb-8">Configurações do Site</h1>
+
+      {success && <div class="mb-6 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm">{success}</div>}
+      {error && <div class="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">{error}</div>}
+
+      <form method="POST" class="space-y-8">
+
+        <!-- Site -->
+        <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Identidade do Site</h2>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label for="site_name" class={labelClass}>Nome do site</label>
+              <input id="site_name" name="site_name" type="text" value={config.site_name} class={inputClass} />
+            </div>
+            <div>
+              <label for="accent_color" class={labelClass}>Cor de destaque</label>
+              <div class="flex gap-2 items-center">
+                <input id="accent_color" name="accent_color" type="color" value={config.accent_color}
+                  class="w-10 h-10 rounded cursor-pointer bg-transparent border-0" />
+                <input id="accent_color_hex" type="text" value={config.accent_color}
+                  class={`${inputClass} flex-1 font-mono`} readonly />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label for="site_description" class={labelClass}>Descrição do site</label>
+            <input id="site_description" name="site_description" type="text" value={config.site_description} class={inputClass} />
+          </div>
+
+          <div>
+            <label for="logo_url" class={labelClass}>Logo (URL da imagem)</label>
+            <input id="logo_url" name="logo_url" type="url" value={config.logo_url} placeholder="https://..." class={inputClass} />
+            <p class={hintClass}>Deixe vazio para usar o ícone SVG padrão.</p>
+          </div>
+        </section>
+
+        <!-- Author -->
+        <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Autor</h2>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label for="author_name" class={labelClass}>Nome do autor</label>
+              <input id="author_name" name="author_name" type="text" value={config.author_name} class={inputClass} />
+            </div>
+            <div>
+              <label for="author_avatar" class={labelClass}>Avatar (URL)</label>
+              <input id="author_avatar" name="author_avatar" type="url" value={config.author_avatar} placeholder="https://..." class={inputClass} />
+            </div>
+          </div>
+
+          <div>
+            <label for="author_bio" class={labelClass}>Bio curta</label>
+            <textarea id="author_bio" name="author_bio" rows={2} class={inputClass + ' resize-none'}>{config.author_bio}</textarea>
+          </div>
+        </section>
+
+        <!-- Social -->
+        <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Redes Sociais</h2>
+          <p class={hintClass + ' !mt-0'}>Preencha apenas o username (sem @).</p>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label for="social_github" class={labelClass}>GitHub</label>
+              <div class="flex items-center">
+                <span class="text-sm text-zinc-600 bg-zinc-800 border border-zinc-700 border-r-0 rounded-l-lg px-3 py-2.5">github.com/</span>
+                <input id="social_github" name="social_github" type="text" value={config.social_github}
+                  class={inputClass + ' rounded-l-none'} placeholder="username" />
+              </div>
+            </div>
+            <div>
+              <label for="social_twitter" class={labelClass}>Twitter/X</label>
+              <div class="flex items-center">
+                <span class="text-sm text-zinc-600 bg-zinc-800 border border-zinc-700 border-r-0 rounded-l-lg px-3 py-2.5">@</span>
+                <input id="social_twitter" name="social_twitter" type="text" value={config.social_twitter}
+                  class={inputClass + ' rounded-l-none'} placeholder="username" />
+              </div>
+            </div>
+            <div>
+              <label for="social_linkedin" class={labelClass}>LinkedIn</label>
+              <div class="flex items-center">
+                <span class="text-sm text-zinc-600 bg-zinc-800 border border-zinc-700 border-r-0 rounded-l-lg px-3 py-2.5">linkedin.com/in/</span>
+                <input id="social_linkedin" name="social_linkedin" type="text" value={config.social_linkedin}
+                  class={inputClass + ' rounded-l-none'} placeholder="username" />
+              </div>
+            </div>
+            <div>
+              <label for="social_instagram" class={labelClass}>Instagram</label>
+              <div class="flex items-center">
+                <span class="text-sm text-zinc-600 bg-zinc-800 border border-zinc-700 border-r-0 rounded-l-lg px-3 py-2.5">@</span>
+                <input id="social_instagram" name="social_instagram" type="text" value={config.social_instagram}
+                  class={inputClass + ' rounded-l-none'} placeholder="username" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Comments -->
+        <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Comentários (Giscus)</h2>
+          <p class={hintClass + ' !mt-0'}>
+            Configure em <a href="https://giscus.app" target="_blank" class="text-indigo-400 hover:underline">giscus.app</a> para obter esses valores.
+          </p>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label for="giscus_repo" class={labelClass}>Repositório (user/repo)</label>
+              <input id="giscus_repo" name="giscus_repo" type="text" value={config.giscus_repo} class={inputClass} placeholder="thiago-tap/site_cms" />
+            </div>
+            <div>
+              <label for="giscus_repo_id" class={labelClass}>Repo ID</label>
+              <input id="giscus_repo_id" name="giscus_repo_id" type="text" value={config.giscus_repo_id} class={inputClass} />
+            </div>
+            <div>
+              <label for="giscus_category" class={labelClass}>Category</label>
+              <input id="giscus_category" name="giscus_category" type="text" value={config.giscus_category} class={inputClass} placeholder="Announcements" />
+            </div>
+            <div>
+              <label for="giscus_category_id" class={labelClass}>Category ID</label>
+              <input id="giscus_category_id" name="giscus_category_id" type="text" value={config.giscus_category_id} class={inputClass} />
+            </div>
+          </div>
+        </section>
+
+        <!-- Newsletter -->
+        <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Newsletter</h2>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" name="newsletter_enabled" value="1" checked={config.newsletter_enabled === '1'}
+              class="w-4 h-4 rounded text-indigo-500" />
+            <span class="text-sm text-zinc-300">Exibir formulário de newsletter nos posts</span>
+          </label>
+        </section>
+
+        <div class="flex gap-3">
+          <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-lg font-medium text-sm transition-colors">
+            Salvar configurações
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const colorInput = document.getElementById('accent_color') as HTMLInputElement;
+    const hexInput = document.getElementById('accent_color_hex') as HTMLInputElement;
+    colorInput?.addEventListener('input', () => { hexInput.value = colorInput.value; });
+  </script>
+</body>
+</html>

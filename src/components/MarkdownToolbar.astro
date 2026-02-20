@@ -1,0 +1,114 @@
+---
+interface Props {
+  targetId: string; // ID of the textarea
+}
+const { targetId } = Astro.props;
+---
+
+<div class="flex flex-wrap gap-1 mb-2 p-2 bg-zinc-900 border border-zinc-700 rounded-t-lg border-b-0" data-target={targetId}>
+  {[
+    { label: 'B', title: 'Negrito', syntax: '**', wrap: true },
+    { label: 'I', title: 'Itálico', syntax: '*', wrap: true },
+    { label: 'H2', title: 'Título 2', syntax: '## ', wrap: false },
+    { label: 'H3', title: 'Título 3', syntax: '### ', wrap: false },
+    { label: '—', title: 'Separador', syntax: '\n---\n', wrap: false },
+    { label: '🔗', title: 'Link', syntax: '[texto](url)', wrap: false, cursor: 1 },
+    { label: '🖼', title: 'Imagem (URL)', syntax: '![alt](url)', wrap: false, cursor: 2 },
+    { label: '`', title: 'Código inline', syntax: '`', wrap: true },
+    { label: '```', title: 'Bloco de código', syntax: '```\n', wrap: false },
+    { label: '❝', title: 'Citação', syntax: '> ', wrap: false },
+    { label: '•', title: 'Lista', syntax: '- ', wrap: false },
+    { label: '1.', title: 'Lista numerada', syntax: '1. ', wrap: false },
+  ].map(({ label, title, syntax, wrap, cursor }) => (
+    <button
+      type="button"
+      data-syntax={syntax}
+      data-wrap={wrap ? '1' : '0'}
+      data-cursor={cursor?.toString() ?? ''}
+      title={title}
+      class="toolbar-btn px-2 py-1 text-xs font-mono text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 rounded transition-colors"
+    >
+      {label}
+    </button>
+  ))}
+
+  <!-- Image upload button -->
+  <label
+    title="Upload de imagem"
+    class="px-2 py-1 text-xs font-mono text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 rounded transition-colors cursor-pointer"
+  >
+    📤
+    <input type="file" accept="image/*" class="hidden" id={`img-upload-${targetId}`} />
+  </label>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLDivElement>('[data-target]').forEach((toolbar) => {
+    const targetId = toolbar.dataset.target!;
+    const textarea = document.getElementById(targetId) as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    // Toolbar buttons
+    toolbar.querySelectorAll<HTMLButtonElement>('.toolbar-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const syntax = btn.dataset.syntax!;
+        const wrap = btn.dataset.wrap === '1';
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selected = textarea.value.slice(start, end);
+
+        let insert: string;
+        let cursorOffset: number;
+
+        if (wrap) {
+          insert = `${syntax}${selected || 'texto'}${syntax}`;
+          cursorOffset = selected ? insert.length : syntax.length;
+        } else {
+          insert = syntax + (selected || '');
+          cursorOffset = insert.length;
+        }
+
+        textarea.setRangeText(insert, start, end, 'end');
+        if (!selected) {
+          textarea.selectionStart = start + (wrap ? syntax.length : syntax.length);
+          textarea.selectionEnd = start + cursorOffset - (wrap ? syntax.length : 0);
+        }
+        textarea.focus();
+        textarea.dispatchEvent(new Event('input'));
+      });
+    });
+
+    // Image upload
+    const fileInput = document.getElementById(`img-upload-${targetId}`) as HTMLInputElement;
+    fileInput?.addEventListener('change', async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const btn = fileInput.closest('label')!;
+      const originalText = btn.childNodes[0].textContent;
+      btn.childNodes[0].textContent = '⏳';
+
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const json = await res.json() as { url?: string; error?: string };
+        if (json.url) {
+          const name = file.name.replace(/\.[^.]+$/, '');
+          const md = `![${name}](${json.url})`;
+          const pos = textarea.selectionStart;
+          textarea.setRangeText(`\n${md}\n`, pos, pos, 'end');
+          textarea.focus();
+        } else {
+          alert(json.error ?? 'Erro ao enviar imagem.');
+        }
+      } catch {
+        alert('Erro de conexão ao enviar imagem.');
+      } finally {
+        btn.childNodes[0].textContent = originalText;
+        fileInput.value = '';
+      }
+    });
+  });
+</script>

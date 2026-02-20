@@ -1,0 +1,67 @@
+---
+interface Props {
+  enabled?: boolean;
+}
+const { enabled = true } = Astro.props;
+---
+
+{enabled && (
+  <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 my-8">
+    <h3 class="text-base font-semibold text-zinc-100 mb-1">Newsletter</h3>
+    <p class="text-sm text-zinc-400 mb-4">Receba novos posts diretamente no seu email.</p>
+
+    <form id="newsletter-form" class="flex flex-col sm:flex-row gap-2">
+      <input
+        type="text"
+        name="name"
+        placeholder="Seu nome (opcional)"
+        class="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors"
+      />
+      <input
+        type="email"
+        name="email"
+        required
+        placeholder="seu@email.com"
+        class="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors"
+      />
+      <button
+        type="submit"
+        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+      >
+        Inscrever
+      </button>
+    </form>
+    <p id="newsletter-msg" class="hidden text-sm mt-3"></p>
+  </div>
+)}
+
+<script>
+  const form = document.getElementById('newsletter-form') as HTMLFormElement;
+  const msg = document.getElementById('newsletter-msg')!;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = new FormData(form);
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.get('email'), name: data.get('name') }),
+      });
+      const json = await res.json() as { ok?: boolean; error?: string };
+      msg.classList.remove('hidden');
+      if (json.ok) {
+        msg.textContent = '✓ Inscrito com sucesso! Obrigado.';
+        msg.className = 'text-sm mt-3 text-green-400';
+        form.reset();
+      } else {
+        msg.textContent = json.error ?? 'Erro ao inscrever.';
+        msg.className = 'text-sm mt-3 text-red-400';
+      }
+    } catch {
+      msg.textContent = 'Erro de conexão.';
+      msg.className = 'text-sm mt-3 text-red-400';
+      msg.classList.remove('hidden');
+    }
+  });
+</script>

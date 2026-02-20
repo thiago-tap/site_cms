@@ -1,0 +1,85 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import SEO from '../components/SEO.astro';
+import { getDb, pages } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { getSettings } from '../lib/settings';
+import { renderMarkdown } from '../lib/markdown';
+import '../styles/global.css';
+
+const db = getDb(Astro.locals.runtime.env.DB);
+const config = await getSettings(Astro.locals.runtime.env.DB);
+const page = await db.select().from(pages).where(eq(pages.slug, 'sobre')).get();
+const html = page ? renderMarkdown(page.content) : '';
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <SEO
+    title="Sobre"
+    description={`Conheça mais sobre ${config.author_name || config.site_name}`}
+    siteName={config.site_name}
+    siteUrl={Astro.locals.runtime.env.SITE_URL}
+  />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="alternate" type="application/rss+xml" title={config.site_name} href="/rss.xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
+  <Header />
+
+  <main class="max-w-3xl mx-auto px-4 py-12 flex-1 w-full">
+    <a href="/" class="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors mb-8">
+      ← Blog
+    </a>
+
+    {config.author_avatar && (
+      <img
+        src={config.author_avatar}
+        alt={config.author_name || 'Autor'}
+        class="w-24 h-24 rounded-full mb-6 border-2 border-zinc-800"
+      />
+    )}
+
+    {config.author_name && (
+      <h1 class="text-3xl font-bold text-zinc-100 mb-2">{config.author_name}</h1>
+    )}
+
+    <!-- Social links -->
+    <div class="flex flex-wrap gap-3 mb-10">
+      {config.social_github && (
+        <a href={`https://github.com/${config.social_github}`} target="_blank" rel="noopener"
+          class="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">
+          GitHub
+        </a>
+      )}
+      {config.social_twitter && (
+        <a href={`https://twitter.com/${config.social_twitter}`} target="_blank" rel="noopener"
+          class="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">
+          Twitter/X
+        </a>
+      )}
+      {config.social_linkedin && (
+        <a href={`https://linkedin.com/in/${config.social_linkedin}`} target="_blank" rel="noopener"
+          class="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">
+          LinkedIn
+        </a>
+      )}
+      {config.social_instagram && (
+        <a href={`https://instagram.com/${config.social_instagram}`} target="_blank" rel="noopener"
+          class="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">
+          Instagram
+        </a>
+      )}
+    </div>
+
+    <div class="prose">
+      <Fragment set:html={html} />
+    </div>
+  </main>
+
+  <Footer />
+</body>
+</html>

@@ -1,0 +1,91 @@
+---
+import Header from '../../../components/Header.astro';
+import AdminNav from '../../../components/admin/AdminNav.astro';
+import MarkdownToolbar from '../../../components/MarkdownToolbar.astro';
+import { getDb, pages } from '../../../lib/db';
+import { eq } from 'drizzle-orm';
+import '../../../styles/global.css';
+
+const { slug } = Astro.params;
+if (!slug) return Astro.redirect('/admin/pages');
+
+const db = getDb(Astro.locals.runtime.env.DB);
+let page = await db.select().from(pages).where(eq(pages.slug, slug)).get();
+
+if (!page) return Astro.redirect('/admin/pages');
+
+let success = '';
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const title = (form.get('title') as string)?.trim();
+  const content = (form.get('content') as string)?.trim();
+
+  if (!title || !content) {
+    error = 'Título e conteúdo são obrigatórios.';
+  } else {
+    const now = Math.floor(Date.now() / 1000);
+    await db.update(pages).set({ title, content, updatedAt: now }).where(eq(pages.slug, slug));
+    page = await db.select().from(pages).where(eq(pages.slug, slug)).get() ?? page;
+    success = 'Página atualizada!';
+  }
+}
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Editar: {page.title} — Admin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+  <Header />
+
+  <div class="max-w-5xl mx-auto px-4 py-8 flex gap-8">
+    <AdminNav />
+
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-8">
+        <h1 class="text-2xl font-bold">Editar: {page.title}</h1>
+        <div class="flex items-center gap-3">
+          <a href={`/${page.slug}`} target="_blank" class="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
+            Ver página →
+          </a>
+          <a href="/admin/pages" class="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">← Voltar</a>
+        </div>
+      </div>
+
+      {success && <div class="mb-6 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm">{success}</div>}
+      {error && <div class="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">{error}</div>}
+
+      <form method="POST" class="space-y-5">
+        <div>
+          <label for="title" class="block text-sm font-medium text-zinc-300 mb-1.5">Título</label>
+          <input id="title" name="title" type="text" required value={page.title}
+            class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-indigo-500 transition-colors" />
+        </div>
+
+        <div>
+          <label for="content" class="block text-sm font-medium text-zinc-300 mb-1.5">Conteúdo (Markdown)</label>
+          <MarkdownToolbar targetId="content" />
+          <textarea
+            id="content" name="content" required rows={20} spellcheck={false}
+            class="w-full bg-zinc-950 border border-zinc-700 rounded-b-lg rounded-t-none px-4 py-3 text-sm font-mono text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors resize-y leading-relaxed"
+          >{page.content}</textarea>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-lg font-medium text-sm transition-colors">
+            Salvar página
+          </button>
+          <a href="/admin/pages" class="px-6 py-2.5 border border-zinc-700 hover:border-zinc-600 text-zinc-300 rounded-lg text-sm font-medium transition-colors">
+            Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

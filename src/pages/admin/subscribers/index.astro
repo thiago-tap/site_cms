@@ -1,0 +1,105 @@
+---
+import Header from '../../../components/Header.astro';
+import AdminNav from '../../../components/admin/AdminNav.astro';
+import { getDb, subscribers } from '../../../lib/db';
+import { eq } from 'drizzle-orm';
+import { formatDate } from '../../../lib/utils';
+import '../../../styles/global.css';
+
+const db = getDb(Astro.locals.runtime.env.DB);
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = form.get('_action') as string;
+  const id = form.get('id') as string;
+  if (action === 'toggle' && id) {
+    const sub = await db.select().from(subscribers).where(eq(subscribers.id, id)).get();
+    if (sub) await db.update(subscribers).set({ active: sub.active ? 0 : 1 }).where(eq(subscribers.id, id));
+  } else if (action === 'delete' && id) {
+    await db.delete(subscribers).where(eq(subscribers.id, id));
+  }
+}
+
+const allSubs = await db.select().from(subscribers).all();
+allSubs.sort((a, b) => b.createdAt - a.createdAt);
+const active = allSubs.filter((s) => s.active).length;
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Newsletter — Admin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+  <Header />
+
+  <div class="max-w-5xl mx-auto px-4 py-8 flex gap-8">
+    <AdminNav />
+
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-4 mb-8">
+        <h1 class="text-2xl font-bold">Newsletter</h1>
+        <div class="flex gap-3">
+          <span class="text-sm text-zinc-400">{active} ativo{active !== 1 ? 's' : ''}</span>
+          <span class="text-sm text-zinc-600">/ {allSubs.length} total</span>
+        </div>
+      </div>
+
+      {allSubs.length === 0 ? (
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-10 text-center text-zinc-600">
+          Nenhum inscrito ainda.
+        </div>
+      ) : (
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-zinc-800">
+                <th class="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Email</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Nome</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Data</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Status</th>
+                <th class="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-800">
+              {allSubs.map((sub) => (
+                <tr class="hover:bg-zinc-800/50 transition-colors">
+                  <td class="px-4 py-3 text-zinc-300">{sub.email}</td>
+                  <td class="px-4 py-3 text-zinc-500">{sub.name || '—'}</td>
+                  <td class="px-4 py-3 text-zinc-600 text-xs">{formatDate(sub.createdAt)}</td>
+                  <td class="px-4 py-3">
+                    <span class={`text-xs px-2 py-0.5 rounded-full font-medium ${sub.active ? 'bg-green-500/10 text-green-400' : 'bg-zinc-700 text-zinc-500'}`}>
+                      {sub.active ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-2 justify-end">
+                      <form method="POST" class="inline">
+                        <input type="hidden" name="_action" value="toggle" />
+                        <input type="hidden" name="id" value={sub.id} />
+                        <button type="submit" class="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+                          {sub.active ? 'Desativar' : 'Ativar'}
+                        </button>
+                      </form>
+                      <form method="POST" class="inline">
+                        <input type="hidden" name="_action" value="delete" />
+                        <input type="hidden" name="id" value={sub.id} />
+                        <button type="submit" onclick="return confirm('Excluir inscrito?')"
+                          class="text-xs text-red-500 hover:text-red-400 transition-colors">
+                          Excluir
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  </div>
+</body>
+</html>

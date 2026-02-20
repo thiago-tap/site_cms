@@ -1,0 +1,85 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import SEO from '../components/SEO.astro';
+import PostCard from '../components/PostCard.astro';
+import { getDb, posts } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { getSettings } from '../lib/settings';
+import '../styles/global.css';
+
+const config = await getSettings(Astro.locals.runtime.env.DB);
+const query = Astro.url.searchParams.get('q')?.trim().toLowerCase() ?? '';
+
+let results: typeof posts.$inferSelect[] = [];
+
+if (query.length >= 2) {
+  const db = getDb(Astro.locals.runtime.env.DB);
+  const allPosts = await db.select().from(posts).where(eq(posts.status, 'published')).all();
+  results = allPosts.filter((p) =>
+    p.title.toLowerCase().includes(query) ||
+    p.content.toLowerCase().includes(query) ||
+    p.excerpt?.toLowerCase().includes(query) ||
+    p.tags.toLowerCase().includes(query)
+  );
+}
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <SEO
+    title={query ? `Busca: ${query}` : 'Busca'}
+    description={`Pesquise posts em ${config.site_name}`}
+    siteName={config.site_name}
+    siteUrl={Astro.locals.runtime.env.SITE_URL}
+  />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
+  <Header />
+
+  <main class="max-w-4xl mx-auto px-4 py-12 flex-1 w-full">
+    <h1 class="text-3xl font-bold text-zinc-100 mb-8">Busca</h1>
+
+    <form method="GET" action="/busca" class="mb-8">
+      <div class="flex gap-2">
+        <input
+          name="q"
+          type="search"
+          value={query}
+          placeholder="Pesquisar posts..."
+          autofocus
+          class="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors"
+        />
+        <button type="submit"
+          class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors">
+          Buscar
+        </button>
+      </div>
+    </form>
+
+    {query.length >= 2 && (
+      <div>
+        <p class="text-sm text-zinc-500 mb-5">
+          {results.length === 0
+            ? `Nenhum resultado para "${query}"`
+            : `${results.length} resultado${results.length !== 1 ? 's' : ''} para "${query}"`}
+        </p>
+        {results.length > 0 && (
+          <div class="grid gap-4 sm:grid-cols-2">
+            {results.map((post) => <PostCard post={post} />)}
+          </div>
+        )}
+      </div>
+    )}
+
+    {query.length < 2 && query.length > 0 && (
+      <p class="text-sm text-zinc-500">Digite pelo menos 2 caracteres para buscar.</p>
+    )}
+  </main>
+
+  <Footer />
+</body>
+</html>

@@ -1,20 +1,38 @@
 ---
+import { getSettings } from '../lib/settings';
 const year = new Date().getFullYear();
+const config = Astro.locals.runtime?.env?.DB
+  ? await getSettings(Astro.locals.runtime.env.DB)
+  : null;
+const siteName = config?.site_name ?? 'CatitéoBlog';
 ---
 
 <footer class="border-t border-zinc-800 mt-20">
-  <div class="max-w-4xl mx-auto px-4 py-8 flex items-center justify-between text-sm text-zinc-600">
-    <span>© {year} CatitéoBlog</span>
-    <div class="flex items-center gap-4">
-      <a href="/rss.xml" class="hover:text-zinc-400 transition-colors flex items-center gap-1.5">
-        <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20C4.98 20 4 19.01 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
-        </svg>
-        RSS
-      </a>
-      <a href="https://github.com/thiago-tap/site_cms" target="_blank" rel="noopener" class="hover:text-zinc-400 transition-colors">
-        GitHub
-      </a>
+  <div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-zinc-600">
+      <span>© {year} {siteName}</span>
+
+      <div class="flex items-center gap-4">
+        {config?.social_github && (
+          <a href={`https://github.com/${config.social_github}`} target="_blank" rel="noopener" class="hover:text-zinc-400 transition-colors">GitHub</a>
+        )}
+        {config?.social_twitter && (
+          <a href={`https://twitter.com/${config.social_twitter}`} target="_blank" rel="noopener" class="hover:text-zinc-400 transition-colors">Twitter/X</a>
+        )}
+        {config?.social_linkedin && (
+          <a href={`https://linkedin.com/in/${config.social_linkedin}`} target="_blank" rel="noopener" class="hover:text-zinc-400 transition-colors">LinkedIn</a>
+        )}
+        {config?.social_instagram && (
+          <a href={`https://instagram.com/${config.social_instagram}`} target="_blank" rel="noopener" class="hover:text-zinc-400 transition-colors">Instagram</a>
+        )}
+        <a href="/rss.xml" class="hover:text-zinc-400 transition-colors flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20C4.98 20 4 19.01 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
+          </svg>
+          RSS
+        </a>
+        <a href="/sitemap.xml" class="hover:text-zinc-400 transition-colors">Sitemap</a>
+      </div>
     </div>
   </div>
 </footer>

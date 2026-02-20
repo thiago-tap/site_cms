@@ -1,57 +1,83 @@
 ---
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
+import SEO from '../../components/SEO.astro';
+import TOC from '../../components/TOC.astro';
+import ShareButtons from '../../components/ShareButtons.astro';
+import RelatedPosts from '../../components/RelatedPosts.astro';
+import GiscusComments from '../../components/GiscusComments.astro';
+import NewsletterForm from '../../components/NewsletterForm.astro';
 import { getDb, posts } from '../../lib/db';
 import { eq } from 'drizzle-orm';
-import { renderMarkdown } from '../../lib/markdown';
-import { formatDate, parseTags, isoDate } from '../../lib/utils';
+import { renderMarkdown, extractHeadings } from '../../lib/markdown';
+import { getSettings } from '../../lib/settings';
+import { formatDate, parseTags } from '../../lib/utils';
 import '../../styles/global.css';
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/');
 
 const db = getDb(Astro.locals.runtime.env.DB);
-const post = await db.select().from(posts).where(eq(posts.slug, slug)).get();
+const [post, config] = await Promise.all([
+  db.select().from(posts).where(eq(posts.slug, slug)).get(),
+  getSettings(Astro.locals.runtime.env.DB),
+]);
 
 if (!post || post.status !== 'published') {
   return new Response(null, { status: 404 });
 }
 
-// Increment views asynchronously
-db.update(posts)
-  .set({ views: post.views + 1 })
-  .where(eq(posts.id, post.id))
-  .run()
-  .catch(() => {});
+// Increment views async
+db.update(posts).set({ views: post.views + 1 }).where(eq(posts.id, post.id)).run().catch(() => {});
 
 const html = renderMarkdown(post.content);
+const headings = extractHeadings(post.content);
 const tags = parseTags(post.tags);
+const siteUrl = Astro.locals.runtime.env.SITE_URL ?? 'https://cms.catiteo.com';
+const postUrl = `${siteUrl}/blog/${post.slug}`;
+
+// Related posts (same tags, limit 3)
+const allPublished = await db.select().from(posts)
+  .where(eq(posts.status, 'published'))
+  .all();
+const related = allPublished
+  .filter((p) => p.id !== post.id)
+  .map((p) => ({ post: p, score: parseTags(p.tags).filter((t) => tags.includes(t)).length }))
+  .filter(({ score }) => score > 0)
+  .sort((a, b) => b.score - a.score)
+  .slice(0, 3)
+  .map(({ post }) => post);
 ---
 
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{post.title} — CatitéoBlog</title>
-  <meta name="description" content={post.excerpt ?? post.title} />
-  {post.publishedAt && <meta property="article:published_time" content={isoDate(post.publishedAt)} />}
+  <SEO
+    title={post.title}
+    description={post.metaDescription ?? post.excerpt ?? post.title}
+    image={post.coverImage ?? undefined}
+    type="article"
+    publishedAt={post.publishedAt}
+    tags={tags}
+    siteName={config.site_name}
+    siteUrl={siteUrl}
+  />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="alternate" type="application/rss+xml" title={config.site_name} href="/rss.xml" />
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
   <Header />
 
   <main class="max-w-3xl mx-auto px-4 py-12 flex-1 w-full">
-    <!-- Back -->
     <a href="/" class="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors mb-8">
       ← Todos os posts
     </a>
 
-    <!-- Cover image -->
     {post.coverImage && (
       <img src={post.coverImage} alt={post.title} class="w-full rounded-xl mb-8 aspect-video object-cover" />
     )}
 
-    <!-- Header -->
     <header class="mb-8">
       {tags.length > 0 && (
         <div class="flex flex-wrap gap-1.5 mb-4">
@@ -62,9 +88,7 @@ const tags = parseTags(post.tags);
           ))}
         </div>
       )}
-
       <h1 class="text-3xl font-bold text-zinc-100 mb-4 leading-tight">{post.title}</h1>
-
       <div class="flex items-center gap-4 text-sm text-zinc-500">
         {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
         <span>{post.readingTime} min de leitura</span>
@@ -77,7 +101,7 @@ const tags = parseTags(post.tags);
       </div>
     </header>
 
-    <!-- AI Summary (if available) -->
+    <!-- AI Summary -->
     {post.aiSummary && (
       <div class="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-5 mb-8">
         <div class="flex items-center gap-2 text-indigo-400 text-sm font-medium mb-2">
@@ -90,19 +114,39 @@ const tags = parseTags(post.tags);
       </div>
     )}
 
+    <!-- Table of Contents -->
+    <TOC headings={headings} />
+
     <!-- Content -->
     <div class="prose">
       <Fragment set:html={html} />
     </div>
 
-    <!-- Edit link for owner -->
+    <!-- Share -->
+    <ShareButtons url={postUrl} title={post.title} />
+
+    <!-- Newsletter -->
+    <NewsletterForm enabled={config.newsletter_enabled === '1'} />
+
+    <!-- Edit link -->
     {Astro.locals.user && (
-      <div class="mt-12 pt-6 border-t border-zinc-800">
+      <div class="mt-6 pt-6 border-t border-zinc-800">
         <a href={`/admin/posts/${post.id}`} class="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
           ✏️ Editar este post
         </a>
       </div>
     )}
+
+    <!-- Related posts -->
+    <RelatedPosts posts={related} />
+
+    <!-- Giscus comments -->
+    <GiscusComments
+      repo={config.giscus_repo}
+      repoId={config.giscus_repo_id}
+      category={config.giscus_category}
+      categoryId={config.giscus_category_id}
+    />
   </main>
 
   <Footer />

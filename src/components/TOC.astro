@@ -1,0 +1,24 @@
+---
+interface Props {
+  headings: { depth: number; text: string; slug: string }[];
+}
+const { headings } = Astro.props;
+---
+
+{headings.length > 1 && (
+  <nav class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 mb-8 not-prose">
+    <p class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Índice</p>
+    <ol class="space-y-1.5">
+      {headings.map(({ depth, text, slug }) => (
+        <li class={depth === 3 ? 'ml-4' : ''}>
+          <a
+            href={`#${slug}`}
+            class="text-sm text-zinc-400 hover:text-indigo-400 transition-colors"
+          >
+            {text}
+          </a>
+        </li>
+      ))}
+    </ol>
+  </nav>
+)}

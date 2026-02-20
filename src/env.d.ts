@@ -4,6 +4,7 @@
 type Env = {
   DB: D1Database;
   AI: Ai;
+  MEDIA?: R2Bucket;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
   SITE_URL: string;

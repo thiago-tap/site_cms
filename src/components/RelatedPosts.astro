@@ -1,0 +1,30 @@
+---
+import PostCard from './PostCard.astro';
+
+interface Post {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  coverImage: string | null;
+  tags: string;
+  status: string;
+  readingTime: number;
+  publishedAt: number | null;
+  views: number;
+}
+
+interface Props {
+  posts: Post[];
+}
+const { posts } = Astro.props;
+---
+
+{posts.length > 0 && (
+  <div class="mt-14 pt-8 border-t border-zinc-800 not-prose">
+    <h2 class="text-lg font-semibold text-zinc-200 mb-5">Posts relacionados</h2>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {posts.map((post) => <PostCard post={post} />)}
+    </div>
+  </div>
+)}

@@ -1,10 +1,23 @@
 ---
+import { getDb, contacts } from '../../lib/db';
+
 const user = Astro.locals.user!;
 const path = Astro.url.pathname;
+
+let unreadContacts = 0;
+try {
+  const db = getDb(Astro.locals.runtime.env.DB);
+  const all = await db.select({ read: contacts.read }).from(contacts).all();
+  unreadContacts = all.filter((c) => !c.read).length;
+} catch {}
 
 const links = [
   { href: '/admin', label: 'Dashboard', exact: true },
   { href: '/admin/posts', label: 'Posts' },
+  { href: '/admin/pages', label: 'Páginas' },
+  { href: '/admin/contacts', label: 'Contatos', badge: unreadContacts },
+  { href: '/admin/subscribers', label: 'Newsletter' },
+  { href: '/admin/settings', label: 'Configurações' },
 ];
 ---
 
@@ -23,18 +36,19 @@ const links = [
     </div>
 
     <nav class="space-y-1">
-      {links.map(({ href, label, exact }) => {
+      {links.map(({ href, label, exact, badge }) => {
         const active = exact ? path === href : path.startsWith(href);
         return (
           <a
             href={href}
-            class={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+            class={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
               active
                 ? 'bg-indigo-500/10 text-indigo-400 font-medium'
                 : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'
             }`}
           >
-            {label}
+            <span>{label}</span>
+            {badge ? <span class="text-xs bg-indigo-600 text-white px-1.5 py-0.5 rounded-full leading-none">{badge}</span> : null}
           </a>
         );
       })}
