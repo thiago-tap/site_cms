@@ -1,10 +1,39 @@
 import type { APIRoute } from 'astro';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml'];
+const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
+type MinioEnv = {
+  MINIO_ENDPOINT: string;
+  MINIO_ACCESS_KEY: string;
+  MINIO_SECRET_KEY: string;
+  MINIO_BUCKET: string;
+  MINIO_PUBLIC_URL?: string;
+  MINIO_REGION?: string;
+};
+
+function getMinioClient(env: MinioEnv): S3Client {
+  return new S3Client({
+    endpoint: env.MINIO_ENDPOINT,
+    region: env.MINIO_REGION ?? 'us-east-1',
+    credentials: {
+      accessKeyId: env.MINIO_ACCESS_KEY,
+      secretAccessKey: env.MINIO_SECRET_KEY,
+    },
+    forcePathStyle: true, // Required for MinIO (vs AWS virtual-hosted style)
+  });
+}
 
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
-    const env = locals.runtime.env as typeof locals.runtime.env & { MEDIA?: R2Bucket };
-    if (!env.MEDIA) {
-      return Response.json({ error: 'Upload de imagens não configurado. Adicione o binding R2 "MEDIA" no Cloudflare Pages.' }, { status: 503 });
+    const env = locals.runtime.env as Env & Partial<MinioEnv>;
+
+    if (!env.MINIO_ENDPOINT || !env.MINIO_ACCESS_KEY || !env.MINIO_SECRET_KEY || !env.MINIO_BUCKET) {
+      return Response.json(
+        { error: 'MinIO não configurado. Adicione MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY e MINIO_BUCKET nas variáveis de ambiente.' },
+        { status: 503 }
+      );
     }
 
     const formData = await request.formData();
@@ -12,13 +41,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     if (!file) return Response.json({ error: 'Nenhum arquivo enviado.' }, { status: 400 });
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml'];
-    if (!allowedTypes.includes(file.type)) {
-      return Response.json({ error: 'Tipo de arquivo não permitido. Use JPG, PNG, GIF, WebP ou SVG.' }, { status: 400 });
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return Response.json({ error: 'Tipo não permitido. Use JPG, PNG, GIF, WebP, AVIF ou SVG.' }, { status: 400 });
     }
 
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
+    if (file.size > MAX_SIZE) {
       return Response.json({ error: 'Arquivo muito grande. Máximo 5MB.' }, { status: 400 });
     }
 
@@ -26,13 +53,24 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const key = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const buffer = await file.arrayBuffer();
-    await env.MEDIA.put(key, buffer, {
-      httpMetadata: { contentType: file.type },
-    });
+    const client = getMinioClient(env as MinioEnv);
 
-    const url = `/media/${key}`;
+    await client.send(new PutObjectCommand({
+      Bucket: env.MINIO_BUCKET,
+      Key: key,
+      Body: new Uint8Array(buffer),
+      ContentType: file.type,
+    }));
+
+    // Build the public URL for the uploaded file
+    const publicBase = env.MINIO_PUBLIC_URL
+      ? env.MINIO_PUBLIC_URL.replace(/\/$/, '')
+      : `${env.MINIO_ENDPOINT.replace(/\/$/, '')}/${env.MINIO_BUCKET}`;
+
+    const url = `${publicBase}/${key}`;
     return Response.json({ ok: true, url });
-  } catch {
-    return Response.json({ error: 'Erro ao enviar arquivo.' }, { status: 500 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    return Response.json({ error: `Erro ao enviar arquivo: ${msg}` }, { status: 500 });
   }
 };

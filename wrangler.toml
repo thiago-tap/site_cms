@@ -13,3 +13,10 @@ binding = "AI"
 
 [vars]
 SITE_URL = "https://cms.catiteo.com"
+# MinIO — configure as secrets in Cloudflare Pages (Settings → Environment Variables)
+# MINIO_ENDPOINT = "https://minio.meuservidor.com"
+# MINIO_ACCESS_KEY = "..."
+# MINIO_SECRET_KEY = "..."
+# MINIO_BUCKET = "site-cms-media"
+# MINIO_PUBLIC_URL = "https://minio.meuservidor.com/site-cms-media"  # opcional
+# MINIO_REGION = "us-east-1"  # opcional
