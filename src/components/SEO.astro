@@ -5,9 +5,12 @@ interface Props {
   image?: string;
   type?: 'website' | 'article';
   publishedAt?: number | null;
+  updatedAt?: number | null;
   tags?: string[];
   siteName?: string;
   siteUrl?: string;
+  authorName?: string;
+  wordCount?: number;
 }
 
 const {
@@ -16,13 +19,59 @@ const {
   image,
   type = 'website',
   publishedAt,
+  updatedAt,
   tags = [],
   siteName = 'Blog do Thiago',
   siteUrl = 'https://thiago.catiteo.com',
+  authorName = '',
+  wordCount,
 } = Astro.props;
 
 const pageUrl = new URL(Astro.url.pathname, siteUrl).toString();
 const ogImage = image?.startsWith('http') ? image : image ? new URL(image, siteUrl).toString() : null;
+
+const articleJsonLd = type === 'article' ? {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: title,
+  description: description || title,
+  image: ogImage ?? undefined,
+  url: pageUrl,
+  datePublished: publishedAt ? new Date(publishedAt * 1000).toISOString() : undefined,
+  dateModified: updatedAt ? new Date(updatedAt * 1000).toISOString() : (publishedAt ? new Date(publishedAt * 1000).toISOString() : undefined),
+  keywords: tags.join(', ') || undefined,
+  wordCount: wordCount ?? undefined,
+  inLanguage: 'pt-BR',
+  author: authorName ? {
+    '@type': 'Person',
+    name: authorName,
+    url: siteUrl,
+  } : undefined,
+  publisher: {
+    '@type': 'Organization',
+    name: siteName,
+    logo: {
+      '@type': 'ImageObject',
+      url: new URL('/favicon.svg', siteUrl).toString(),
+    },
+  },
+  mainEntityOfPage: {
+    '@type': 'WebPage',
+    '@id': pageUrl,
+  },
+} : null;
+
+const websiteJsonLd = type !== 'article' ? {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: siteName,
+  url: siteUrl,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: `${siteUrl}/busca?q={search_term_string}`,
+    'query-input': 'required name=search_term_string',
+  },
+} : null;
 ---
 
 <title>{title} — {siteName}</title>
@@ -48,16 +97,9 @@ const ogImage = image?.startsWith('http') ? image : image ? new URL(image, siteU
 {ogImage && <meta name="twitter:image" content={ogImage} />}
 
 <!-- JSON-LD -->
-{type === 'article' && (
-  <script type="application/ld+json" set:html={JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: title,
-    description: description,
-    image: ogImage,
-    datePublished: publishedAt ? new Date(publishedAt * 1000).toISOString() : undefined,
-    keywords: tags.join(', '),
-    url: pageUrl,
-    publisher: { '@type': 'Organization', name: siteName },
-  })} />
+{articleJsonLd && (
+  <script type="application/ld+json" set:html={JSON.stringify(articleJsonLd)} />
+)}
+{websiteJsonLd && (
+  <script type="application/ld+json" set:html={JSON.stringify(websiteJsonLd)} />
 )}

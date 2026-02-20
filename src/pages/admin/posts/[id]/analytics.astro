@@ -1,0 +1,144 @@
+---
+import Header from '../../../../components/Header.astro';
+import AdminNav from '../../../../components/admin/AdminNav.astro';
+import { getDb, posts } from '../../../../lib/db';
+import { eq, sql } from 'drizzle-orm';
+import { formatDate } from '../../../../lib/utils';
+import '../../../../styles/global.css';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+
+const { id } = Astro.params;
+if (!id) return Astro.redirect('/admin/posts');
+
+const db = getDb(Astro.locals.runtime.env.DB);
+const post = await db.select().from(posts).where(eq(posts.id, id)).get();
+if (!post) return new Response(null, { status: 404 });
+
+// Last 30 days
+const days: string[] = [];
+for (let i = 29; i >= 0; i--) {
+  const d = new Date();
+  d.setDate(d.getDate() - i);
+  days.push(d.toISOString().split('T')[0]);
+}
+const minDay = days[0];
+
+// Views per day
+const viewRows = await db.run(
+  sql`SELECT day, count FROM post_views_log WHERE post_id = ${id} AND day >= ${minDay} ORDER BY day`
+) as { results: { day: string; count: number }[] };
+
+const viewsByDay = new Map<string, number>();
+for (const row of (viewRows.results ?? [])) {
+  viewsByDay.set(row.day, Number(row.count));
+}
+const chartData = days.map((d) => ({ day: d, count: viewsByDay.get(d) ?? 0 }));
+const maxCount = Math.max(...chartData.map((d) => d.count), 1);
+const totalLast30 = chartData.reduce((s, d) => s + d.count, 0);
+
+// Top referrers for this post
+const refRows = await db.run(
+  sql`SELECT referrer, SUM(count) as total FROM post_referrers WHERE post_id = ${id} GROUP BY referrer ORDER BY total DESC LIMIT 10`
+) as { results: { referrer: string; total: number }[] };
+const topRefs = (refRows.results ?? []).map((r) => ({ referrer: r.referrer, count: Number(r.total) }));
+const maxRef = Math.max(...topRefs.map((r) => r.count), 1);
+
+// All-time views from posts table
+const totalViews = post.views;
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Analytics: {post.title} — Admin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+  <Header />
+
+  <div class="max-w-5xl mx-auto px-4 py-8 flex gap-8">
+    <AdminNav />
+
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h1 class="text-xl font-bold">Analytics do post</h1>
+          <p class="text-sm text-zinc-500 mt-1 truncate max-w-md">{post.title}</p>
+        </div>
+        <a href={`/admin/posts/${id}`} class="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">← Voltar ao editor</a>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <p class="text-2xl font-bold text-blue-400">{totalViews}</p>
+          <p class="text-xs text-zinc-500 mt-1">Views totais</p>
+        </div>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <p class="text-2xl font-bold text-indigo-400">{totalLast30}</p>
+          <p class="text-xs text-zinc-500 mt-1">Últimos 30 dias</p>
+        </div>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <p class="text-2xl font-bold text-emerald-400">{post.readingTime} min</p>
+          <p class="text-xs text-zinc-500 mt-1">Tempo de leitura</p>
+        </div>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <p class="text-2xl font-bold text-amber-400">{post.publishedAt ? formatDate(post.publishedAt) : '—'}</p>
+          <p class="text-xs text-zinc-500 mt-1">Publicado em</p>
+        </div>
+      </div>
+
+      <!-- Views chart (last 30 days) -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 mb-6">
+        <h2 class="text-sm font-medium text-zinc-400 mb-4 uppercase tracking-wider">Views — Últimos 30 dias</h2>
+        <div class="flex items-end gap-1 h-32">
+          {chartData.map(({ day, count }) => {
+            const pct = Math.round((count / maxCount) * 100);
+            const label = day.slice(5); // MM-DD
+            return (
+              <div class="flex-1 flex flex-col items-center gap-1 group relative">
+                <div
+                  class="w-full bg-indigo-600/70 hover:bg-indigo-500 rounded-sm transition-colors cursor-default"
+                  style={`height: ${Math.max(pct, 2)}%`}
+                  title={`${day}: ${count} views`}
+                ></div>
+                <span class="text-[8px] text-zinc-700 group-hover:text-zinc-500 leading-none hidden sm:block">
+                  {label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {chartData.every((d) => d.count === 0) && (
+          <p class="text-center text-xs text-zinc-600 mt-2">Nenhuma visita registrada neste período.</p>
+        )}
+      </div>
+
+      <!-- Top referrers -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <h2 class="text-sm font-medium text-zinc-400 mb-4 uppercase tracking-wider">Origem do tráfego</h2>
+        {topRefs.length === 0 ? (
+          <p class="text-sm text-zinc-600">Nenhum referrer registrado ainda.</p>
+        ) : (
+          <div class="space-y-2.5">
+            {topRefs.map(({ referrer, count }) => {
+              const pct = Math.round((count / maxRef) * 100);
+              return (
+                <div class="flex items-center gap-3">
+                  <span class="text-xs text-zinc-400 w-32 shrink-0 truncate">{referrer}</span>
+                  <div class="flex-1 bg-zinc-800 rounded-full h-1.5">
+                    <div class="bg-teal-500 h-1.5 rounded-full" style={`width:${pct}%`}></div>
+                  </div>
+                  <span class="text-xs text-zinc-500 w-10 text-right shrink-0">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

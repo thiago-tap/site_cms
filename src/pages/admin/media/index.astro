@@ -1,0 +1,187 @@
+---
+import Header from '../../../components/Header.astro';
+import AdminNav from '../../../components/admin/AdminNav.astro';
+import '../../../styles/global.css';
+
+if (!Astro.locals.user) return Astro.redirect('/login');
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Biblioteca de Mídia — Admin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+  <Header />
+
+  <div class="max-w-5xl mx-auto px-4 py-8 flex gap-8">
+    <AdminNav />
+
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-8">
+        <h1 class="text-2xl font-bold">Biblioteca de Mídia</h1>
+        <label class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium cursor-pointer transition-colors">
+          📤 Upload
+          <input type="file" id="upload-input" accept="image/*" class="hidden" multiple />
+        </label>
+      </div>
+
+      <!-- Upload progress -->
+      <div id="upload-status" class="hidden mb-4 p-3 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-300"></div>
+
+      <!-- R2 not configured warning -->
+      <div id="r2-warning" class="hidden mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-sm">
+        <p class="font-semibold mb-1">R2 não configurado</p>
+        <p>Para usar a biblioteca de mídia, crie um bucket R2 no Cloudflare e adicione o binding <code class="bg-amber-500/10 px-1 rounded">MEDIA_BUCKET</code> no wrangler.toml.</p>
+      </div>
+
+      <!-- Media grid -->
+      <div id="media-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div class="col-span-full text-center py-12 text-zinc-600 text-sm" id="loading-indicator">
+          Carregando...
+        </div>
+      </div>
+
+      <!-- Copied toast -->
+      <div id="copy-toast" class="fixed bottom-6 right-6 bg-zinc-800 border border-zinc-700 text-zinc-100 px-4 py-2 rounded-lg text-sm shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none">
+        URL copiada!
+      </div>
+    </div>
+  </div>
+
+  <!-- Media picker mode (when opened in modal via postMessage) -->
+  <script>
+    const isPickerMode = window.parent !== window;
+
+    async function loadMedia() {
+      try {
+        const res = await fetch('/api/admin/media/list');
+        const data = await res.json() as { objects?: MediaObject[]; r2Enabled?: boolean; error?: string };
+
+        document.getElementById('loading-indicator')?.remove();
+
+        if (!data.r2Enabled) {
+          document.getElementById('r2-warning')?.classList.remove('hidden');
+          return;
+        }
+
+        if (!data.objects || data.objects.length === 0) {
+          const grid = document.getElementById('media-grid')!;
+          grid.innerHTML = '<p class="col-span-full text-center py-12 text-zinc-600 text-sm">Nenhuma imagem ainda. Faça upload acima.</p>';
+          return;
+        }
+
+        renderMedia(data.objects);
+      } catch {
+        document.getElementById('loading-indicator')!.textContent = 'Erro ao carregar mídia.';
+      }
+    }
+
+    interface MediaObject {
+      key: string;
+      size: number;
+      uploaded: string;
+      url: string;
+    }
+
+    function renderMedia(objects: MediaObject[]) {
+      const grid = document.getElementById('media-grid')!;
+      grid.innerHTML = '';
+      for (const obj of objects) {
+        const name = obj.key.split('/').pop() ?? obj.key;
+        const sizeKb = (obj.size / 1024).toFixed(1);
+        const card = document.createElement('div');
+        card.className = 'group relative bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl overflow-hidden cursor-pointer transition-colors';
+        card.innerHTML = `
+          <div class="aspect-square overflow-hidden bg-zinc-800">
+            <img src="${obj.url}" alt="${name}" loading="lazy" class="w-full h-full object-cover transition-transform group-hover:scale-105" />
+          </div>
+          <div class="p-2">
+            <p class="text-xs text-zinc-400 truncate" title="${name}">${name}</p>
+            <p class="text-xs text-zinc-600">${sizeKb} KB</p>
+          </div>
+          <div class="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button class="btn-copy p-1.5 bg-zinc-800/90 hover:bg-indigo-600 rounded text-xs" data-url="${obj.url}" title="Copiar URL">📋</button>
+            <button class="btn-delete p-1.5 bg-zinc-800/90 hover:bg-red-600 rounded text-xs" data-key="${obj.key}" title="Deletar">🗑</button>
+          </div>`;
+
+        // Picker mode: click card to select
+        if (isPickerMode) {
+          card.addEventListener('click', (e) => {
+            if ((e.target as HTMLElement).closest('.btn-copy, .btn-delete')) return;
+            window.parent.postMessage({ type: 'media-select', url: obj.url }, '*');
+          });
+        }
+
+        // Copy URL
+        card.querySelector('.btn-copy')?.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await navigator.clipboard.writeText(obj.url);
+          showToast();
+        });
+
+        // Delete
+        card.querySelector('.btn-delete')?.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm(`Deletar "${name}"?`)) return;
+          const r = await fetch('/api/admin/media/delete', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: obj.key }),
+          });
+          if (r.ok) { card.remove(); }
+          else { alert('Erro ao deletar.'); }
+        });
+
+        grid.appendChild(card);
+      }
+    }
+
+    function showToast() {
+      const toast = document.getElementById('copy-toast')!;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => { toast.classList.remove('opacity-100'); toast.classList.add('opacity-0'); }, 2000);
+    }
+
+    // Upload handler
+    document.getElementById('upload-input')?.addEventListener('change', async (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (!files || files.length === 0) return;
+
+      const status = document.getElementById('upload-status')!;
+      status.classList.remove('hidden');
+
+      for (const file of Array.from(files)) {
+        status.textContent = `Enviando ${file.name}...`;
+        const fd = new FormData();
+        fd.append('file', file);
+        try {
+          const res = await fetch('/api/upload', { method: 'POST', body: fd });
+          const data = await res.json() as { ok?: boolean; url?: string; error?: string };
+          if (data.ok && data.url) {
+            status.textContent = `✓ ${file.name} enviado`;
+          } else {
+            status.textContent = `✗ ${data.error ?? 'Erro'}`;
+          }
+        } catch {
+          status.textContent = `✗ Erro ao enviar ${file.name}`;
+        }
+      }
+
+      // Reload grid
+      setTimeout(() => {
+        status.classList.add('hidden');
+        document.getElementById('media-grid')!.innerHTML = '<div class="col-span-full text-center py-12 text-zinc-600 text-sm">Carregando...</div>';
+        loadMedia();
+      }, 1200);
+
+      (e.target as HTMLInputElement).value = '';
+    });
+
+    loadMedia();
+  </script>
+</body>
+</html>

@@ -55,6 +55,13 @@ export const postViewsLog = sqliteTable('post_views_log', {
   count: integer('count').notNull().default(0),
 });
 
+export const postEmbeddings = sqliteTable('post_embeddings', {
+  postId: text('post_id').primaryKey(),
+  embedding: text('embedding').notNull(),  // JSON float array
+  model: text('model').notNull().default('bge-small'),
+  updatedAt: integer('updated_at').notNull(),
+});
+
 export const postReferrers = sqliteTable('post_referrers', {
   postId: text('post_id').notNull(),
   day: text('day').notNull(),       // YYYY-MM-DD

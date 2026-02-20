@@ -21,20 +21,13 @@ function getMinioClient(env: MinioEnv): S3Client {
       accessKeyId: env.MINIO_ACCESS_KEY,
       secretAccessKey: env.MINIO_SECRET_KEY,
     },
-    forcePathStyle: true, // Required for MinIO (vs AWS virtual-hosted style)
+    forcePathStyle: true,
   });
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
-    const env = locals.runtime.env as Env & Partial<MinioEnv>;
-
-    if (!env.MINIO_ENDPOINT || !env.MINIO_ACCESS_KEY || !env.MINIO_SECRET_KEY || !env.MINIO_BUCKET) {
-      return Response.json(
-        { error: 'MinIO não configurado. Adicione MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY e MINIO_BUCKET nas variáveis de ambiente.' },
-        { status: 503 }
-      );
-    }
+    const env = locals.runtime.env as Env & Partial<MinioEnv> & { MEDIA_BUCKET?: R2Bucket; SITE_URL?: string };
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -51,10 +44,26 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
     const key = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
     const buffer = await file.arrayBuffer();
-    const client = getMinioClient(env as MinioEnv);
 
+    // ── Cloudflare R2 (preferred) ──────────────────────────────────────────────
+    if (env.MEDIA_BUCKET) {
+      await env.MEDIA_BUCKET.put(key, buffer, {
+        httpMetadata: { contentType: file.type },
+      });
+      const siteUrl = (env.SITE_URL ?? 'https://thiago.catiteo.com').replace(/\/$/, '');
+      return Response.json({ ok: true, url: `${siteUrl}/media/${key}` });
+    }
+
+    // ── MinIO fallback ─────────────────────────────────────────────────────────
+    if (!env.MINIO_ENDPOINT || !env.MINIO_ACCESS_KEY || !env.MINIO_SECRET_KEY || !env.MINIO_BUCKET) {
+      return Response.json(
+        { error: 'Nenhum storage configurado. Configure o bucket R2 (MEDIA_BUCKET) ou MinIO nas variáveis de ambiente.' },
+        { status: 503 }
+      );
+    }
+
+    const client = getMinioClient(env as MinioEnv);
     await client.send(new PutObjectCommand({
       Bucket: env.MINIO_BUCKET,
       Key: key,
@@ -62,13 +71,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
       ContentType: file.type,
     }));
 
-    // Build the public URL for the uploaded file
     const publicBase = env.MINIO_PUBLIC_URL
       ? env.MINIO_PUBLIC_URL.replace(/\/$/, '')
       : `${env.MINIO_ENDPOINT.replace(/\/$/, '')}/${env.MINIO_BUCKET}`;
 
-    const url = `${publicBase}/${key}`;
-    return Response.json({ ok: true, url });
+    return Response.json({ ok: true, url: `${publicBase}/${key}` });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
     return Response.json({ error: `Erro ao enviar arquivo: ${msg}` }, { status: 500 });

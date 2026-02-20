@@ -11,7 +11,8 @@ import { getDb, posts, postViewsLog, postReferrers } from '../../lib/db';
 import { eq, ne, desc, sql } from 'drizzle-orm';
 import SeriesNav from '../../components/SeriesNav.astro';
 import TrackingScripts from '../../components/TrackingScripts.astro';
-import { renderMarkdown, extractHeadings } from '../../lib/markdown';
+import { renderMarkdown, extractHeadings, hasTwitterEmbed } from '../../lib/markdown';
+import { getRelatedPosts } from '../../lib/embeddings';
 import { getSettings } from '../../lib/settings';
 import { formatDate, parseTags } from '../../lib/utils';
 import '../../styles/global.css';
@@ -50,6 +51,7 @@ db.run(sql`
 const html = renderMarkdown(post.content);
 const headings = extractHeadings(post.content);
 const tags = parseTags(post.tags);
+const needsTwitterWidget = hasTwitterEmbed(html);
 const siteUrl = Astro.locals.runtime.env.SITE_URL ?? 'https://thiago.catiteo.com';
 const postUrl = `${siteUrl}/blog/${post.slug}`;
 
@@ -63,14 +65,8 @@ const currentIndex = allPublished.findIndex((p) => p.id === post.id);
 const prevPost = currentIndex < allPublished.length - 1 ? allPublished[currentIndex + 1] : null;
 const nextPost = currentIndex > 0 ? allPublished[currentIndex - 1] : null;
 
-// Related posts (same tags, limit 3)
-const related = allPublished
-  .filter((p) => p.id !== post.id)
-  .map((p) => ({ post: p, score: parseTags(p.tags).filter((t) => tags.includes(t)).length }))
-  .filter(({ score }) => score > 0)
-  .sort((a, b) => b.score - a.score)
-  .slice(0, 3)
-  .map(({ post }) => post);
+// Related posts via AI embeddings (fallback: tag similarity)
+const related = await getRelatedPosts(Astro.locals.runtime.env.DB, post.id, allPublished, 3);
 
 // Series nav
 const seriesPosts = post.series
@@ -88,13 +84,17 @@ const seriesPosts = post.series
     image={post.coverImage ?? undefined}
     type="article"
     publishedAt={post.publishedAt}
+    updatedAt={post.updatedAt}
     tags={tags}
     siteName={config.site_name}
     siteUrl={siteUrl}
+    authorName={config.author_name}
+    wordCount={post.readingTime * 200}
   />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="alternate" type="application/rss+xml" title={config.site_name} href="/rss.xml" />
   <TrackingScripts />
+  {needsTwitterWidget && <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>}
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
   <!-- Reading progress bar -->
