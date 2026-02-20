@@ -26,6 +26,12 @@ export const GET: APIRoute = async ({ url, cookies, locals, redirect }) => {
     avatar_url: string;
   };
 
+  // Only allow the configured admin username
+  const allowedAdmin = locals.runtime.env.ADMIN_GITHUB_USERNAME;
+  if (!allowedAdmin || githubUser.login.toLowerCase() !== allowedAdmin.toLowerCase()) {
+    return new Response('Acesso negado.', { status: 403 });
+  }
+
   const user = await upsertUser(locals.runtime.env.DB, githubUser);
   const sessionId = await createSession(locals.runtime.env.DB, user.id);
 

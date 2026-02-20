@@ -7,6 +7,7 @@ type Env = {
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
   SITE_URL: string;
+  ADMIN_GITHUB_USERNAME: string;
 };
 
 type Runtime = import('@astrojs/cloudflare').Runtime<Env>;
