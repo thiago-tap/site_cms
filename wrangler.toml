@@ -6,7 +6,7 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "site-cms-db"
-database_id = "SUBSTITUA_PELO_SEU_DATABASE_ID"
+database_id = "b14e6638-1d5e-4d32-9a73-25ef4f64110c"
 
 [ai]
 binding = "AI"
