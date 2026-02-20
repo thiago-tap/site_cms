@@ -1,0 +1,107 @@
+---
+import Header from '../../../../components/Header.astro';
+import AdminNav from '../../../../components/admin/AdminNav.astro';
+import { getDb, posts, postRevisions } from '../../../../lib/db';
+import { eq, desc } from 'drizzle-orm';
+import { formatDate } from '../../../../lib/utils';
+import '../../../../styles/global.css';
+
+if (!Astro.locals.user) {
+  return Astro.redirect('/login');
+}
+
+const { id } = Astro.params;
+if (!id) return Astro.redirect('/admin/posts');
+
+const db = getDb(Astro.locals.runtime.env.DB);
+const post = await db.select().from(posts).where(eq(posts.id, id)).get();
+if (!post) return new Response(null, { status: 404 });
+
+let error = '';
+
+// Handle restore
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const revId = form.get('rev_id') as string;
+  if (revId) {
+    const rev = await db.select().from(postRevisions).where(eq(postRevisions.id, revId)).get();
+    if (rev) {
+      const now = Math.floor(Date.now() / 1000);
+      await db.update(posts).set({
+        title: rev.title,
+        content: rev.content,
+        updatedAt: now,
+      }).where(eq(posts.id, id));
+      return Astro.redirect(`/admin/posts/${id}?restored=1`);
+    } else {
+      error = 'Revisão não encontrada.';
+    }
+  }
+}
+
+const revs = await db
+  .select()
+  .from(postRevisions)
+  .where(eq(postRevisions.postId, id))
+  .orderBy(desc(postRevisions.savedAt))
+  .all();
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Histórico: {post.title} — Admin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+  <Header />
+
+  <div class="max-w-5xl mx-auto px-4 py-8 flex gap-8">
+    <AdminNav />
+
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h1 class="text-xl font-bold">Histórico de edições</h1>
+          <p class="text-sm text-zinc-500 mt-1 truncate">{post.title}</p>
+        </div>
+        <a href={`/admin/posts/${id}`} class="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">← Voltar ao editor</a>
+      </div>
+
+      {error && <div class="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">{error}</div>}
+
+      {revs.length === 0 ? (
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-12 text-center text-zinc-600">
+          <p>Nenhuma revisão salva ainda.</p>
+          <p class="text-xs mt-2">As revisões são salvas automaticamente ao editar o post.</p>
+        </div>
+      ) : (
+        <div class="space-y-3">
+          {revs.map((rev) => (
+            <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex items-start gap-4">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-zinc-200 truncate">{rev.title}</p>
+                <p class="text-xs text-zinc-600 mt-1">
+                  Versão {rev.version} &mdash; {formatDate(rev.savedAt)}
+                </p>
+                <p class="text-xs text-zinc-700 mt-1 line-clamp-2">{rev.content.slice(0, 120)}…</p>
+              </div>
+              <form method="POST">
+                <input type="hidden" name="rev_id" value={rev.id} />
+                <button
+                  type="submit"
+                  class="text-xs px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-lg transition-colors shrink-0"
+                  onclick="return confirm('Restaurar esta versão? O conteúdo atual será substituído.')"
+                >
+                  Restaurar
+                </button>
+              </form>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</body>
+</html>

@@ -29,6 +29,10 @@ if (Astro.request.method === 'POST') {
       giscus_category: (form.get('giscus_category') as string)?.trim(),
       giscus_category_id: (form.get('giscus_category_id') as string)?.trim(),
       newsletter_enabled: form.get('newsletter_enabled') ? '1' : '0',
+      double_optin_enabled: form.get('double_optin_enabled') ? '1' : '0',
+      ga_id: (form.get('ga_id') as string)?.trim(),
+      fb_pixel_id: (form.get('fb_pixel_id') as string)?.trim(),
+      custom_head_tags: (form.get('custom_head_tags') as string) ?? '',
     });
     success = 'Configurações salvas com sucesso!';
   } catch {
@@ -193,6 +197,39 @@ const hintClass = 'text-xs text-zinc-600 mt-1';
               class="w-4 h-4 rounded text-indigo-500" />
             <span class="text-sm text-zinc-300">Exibir formulário de newsletter nos posts</span>
           </label>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" name="double_optin_enabled" value="1" checked={config.double_optin_enabled === '1'}
+              class="w-4 h-4 rounded text-indigo-500" />
+            <span class="text-sm text-zinc-300">Ativar double opt-in (e-mail de confirmação)</span>
+          </label>
+          <p class={hintClass}>Requer a variável de ambiente <code class="text-indigo-400">RESEND_API_KEY</code> configurada.</p>
+        </section>
+
+        <!-- Rastreamento & Analytics -->
+        <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+          <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Rastreamento & Analytics</h2>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label for="ga_id" class={labelClass}>Google Analytics 4 — Measurement ID</label>
+              <input id="ga_id" name="ga_id" type="text" value={config.ga_id} class={inputClass} placeholder="G-XXXXXXXXXX" />
+              <p class={hintClass}>Ex: G-XXXXXXXXXX — deixe vazio para desativar.</p>
+            </div>
+            <div>
+              <label for="fb_pixel_id" class={labelClass}>Facebook Pixel ID</label>
+              <input id="fb_pixel_id" name="fb_pixel_id" type="text" value={config.fb_pixel_id} class={inputClass} placeholder="123456789012345" />
+              <p class={hintClass}>Deixe vazio para desativar.</p>
+            </div>
+          </div>
+
+          <div>
+            <label for="custom_head_tags" class={labelClass}>Tags personalizadas no &lt;head&gt;</label>
+            <textarea id="custom_head_tags" name="custom_head_tags" rows={4}
+              class={inputClass + ' resize-y font-mono text-xs'}
+              placeholder="<!-- Cole aqui scripts, meta tags ou qualquer HTML para o <head> -->"
+            >{config.custom_head_tags}</textarea>
+            <p class={hintClass}>HTML inserido diretamente no &lt;head&gt; de todas as páginas públicas.</p>
+          </div>
         </section>
 
         <div class="flex gap-3">

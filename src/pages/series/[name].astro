@@ -1,0 +1,76 @@
+---
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getDb, posts } from '../../lib/db';
+import { eq } from 'drizzle-orm';
+import '../../styles/global.css';
+
+const { name } = Astro.params;
+if (!name) return Astro.redirect('/');
+
+const seriesName = decodeURIComponent(name);
+
+const db = getDb(Astro.locals.runtime.env.DB);
+const seriesPosts = await db
+  .select()
+  .from(posts)
+  .where(eq(posts.status, 'published'))
+  .all()
+  .then((all) =>
+    all
+      .filter((p) => p.series === seriesName)
+      .sort((a, b) => (a.seriesOrder ?? 0) - (b.seriesOrder ?? 0))
+  );
+
+if (seriesPosts.length === 0) {
+  return new Response(null, { status: 404 });
+}
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Série: {seriesName}</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
+  <Header />
+
+  <main class="max-w-4xl mx-auto px-4 py-12 flex-1 w-full">
+    <!-- Breadcrumbs -->
+    <nav class="flex items-center gap-1.5 text-xs text-zinc-600 mb-8" aria-label="Breadcrumb">
+      <a href="/" class="hover:text-zinc-400 transition-colors">Blog</a>
+      <span>/</span>
+      <span class="text-zinc-400">Série</span>
+      <span>/</span>
+      <span class="text-zinc-400">{seriesName}</span>
+    </nav>
+
+    <div class="mb-8">
+      <div class="flex items-center gap-2 text-xs text-indigo-400 font-semibold uppercase tracking-wider mb-2">
+        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+        </svg>
+        Série
+      </div>
+      <h1 class="text-3xl font-bold text-zinc-100">{seriesName}</h1>
+      <p class="text-zinc-500 mt-2">{seriesPosts.length} {seriesPosts.length === 1 ? 'post' : 'posts'} nesta série</p>
+    </div>
+
+    <div class="space-y-4">
+      {seriesPosts.map((post, i) => (
+        <div class="flex gap-4 items-start">
+          <span class="text-2xl font-bold text-zinc-700 w-8 shrink-0 text-right mt-3">{i + 1}</span>
+          <div class="flex-1 min-w-0">
+            <PostCard post={post} />
+          </div>
+        </div>
+      ))}
+    </div>
+  </main>
+
+  <Footer />
+</body>
+</html>

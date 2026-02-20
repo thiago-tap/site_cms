@@ -18,6 +18,10 @@ export type SiteSettings = {
   giscus_category: string;
   giscus_category_id: string;
   newsletter_enabled: string;
+  ga_id: string;
+  fb_pixel_id: string;
+  custom_head_tags: string;
+  double_optin_enabled: string;
 };
 
 export const defaultSettings: SiteSettings = {
@@ -37,6 +41,10 @@ export const defaultSettings: SiteSettings = {
   giscus_category: '',
   giscus_category_id: '',
   newsletter_enabled: '1',
+  ga_id: '',
+  fb_pixel_id: '',
+  custom_head_tags: '',
+  double_optin_enabled: '0',
 };
 
 export async function getSettings(d1: D1Database): Promise<SiteSettings> {

@@ -1,8 +1,8 @@
 ---
 import Header from '../../components/Header.astro';
 import AdminNav from '../../components/admin/AdminNav.astro';
-import { getDb, posts, postViewsLog } from '../../lib/db';
-import { sql } from 'drizzle-orm';
+import { getDb, posts, postViewsLog, subscribers, postReferrers } from '../../lib/db';
+import { sql, eq } from 'drizzle-orm';
 import '../../styles/global.css';
 
 const db = getDb(Astro.locals.runtime.env.DB);
@@ -50,6 +50,18 @@ const topPosts = [...allPosts]
   .filter((p) => p.status === 'published' && p.views > 0)
   .sort((a, b) => b.views - a.views)
   .slice(0, 5);
+
+// Newsletter: subscribers count + conversion rate
+const allSubs = await db.select().from(subscribers).all();
+const activeSubs = allSubs.filter((s) => s.active === 1 && s.confirmed === 1).length;
+const convRate = totalViews > 0 ? ((activeSubs / totalViews) * 100).toFixed(2) : '0.00';
+
+// Top referrers (last 14 days)
+const refRows = await db.run(
+  sql`SELECT referrer, SUM(count) as total FROM post_referrers WHERE day >= ${minDay} GROUP BY referrer ORDER BY total DESC LIMIT 8`
+) as { results: { referrer: string; total: number }[] };
+const topReferrers = (refRows.results ?? []).map((r) => ({ referrer: r.referrer, count: Number(r.total) }));
+const maxRefCount = Math.max(...topReferrers.map((r) => r.count), 1);
 ---
 
 <html lang="pt-BR">
@@ -74,13 +86,25 @@ const topPosts = [...allPosts]
       </div>
 
       <!-- Stats -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         {stats.map(({ label, value, color }) => (
           <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
             <p class={`text-2xl font-bold ${color}`}>{value}</p>
             <p class="text-xs text-zinc-500 mt-1">{label}</p>
           </div>
         ))}
+      </div>
+
+      <!-- Newsletter stats -->
+      <div class="grid grid-cols-2 sm:grid-cols-2 gap-4 mb-8">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <p class="text-2xl font-bold text-emerald-400">{activeSubs}</p>
+          <p class="text-xs text-zinc-500 mt-1">Assinantes confirmados</p>
+        </div>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <p class="text-2xl font-bold text-pink-400">{convRate}%</p>
+          <p class="text-xs text-zinc-500 mt-1">Taxa de conversão (views → inscritos)</p>
+        </div>
       </div>
 
       <!-- Analytics Chart -->
@@ -168,6 +192,27 @@ const topPosts = [...allPosts]
           )}
         </div>
       </div>
+
+      <!-- Top referrers -->
+      {topReferrers.length > 0 && (
+        <div class="mt-6">
+          <h2 class="text-sm font-medium text-zinc-500 mb-3 uppercase tracking-wider">Origem do tráfego (últimos 14 dias)</h2>
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2">
+            {topReferrers.map(({ referrer, count }) => {
+              const pct = Math.round((count / maxRefCount) * 100);
+              return (
+                <div class="flex items-center gap-3">
+                  <span class="text-xs text-zinc-400 w-28 shrink-0 truncate">{referrer}</span>
+                  <div class="flex-1 bg-zinc-800 rounded-full h-1.5">
+                    <div class="bg-teal-500 h-1.5 rounded-full" style={`width:${pct}%`}></div>
+                  </div>
+                  <span class="text-xs text-zinc-500 w-8 text-right shrink-0">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   </div>
 </body>

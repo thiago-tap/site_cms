@@ -7,8 +7,10 @@ import ShareButtons from '../../components/ShareButtons.astro';
 import RelatedPosts from '../../components/RelatedPosts.astro';
 import GiscusComments from '../../components/GiscusComments.astro';
 import NewsletterForm from '../../components/NewsletterForm.astro';
-import { getDb, posts, postViewsLog } from '../../lib/db';
+import { getDb, posts, postViewsLog, postReferrers } from '../../lib/db';
 import { eq, ne, desc, sql } from 'drizzle-orm';
+import SeriesNav from '../../components/SeriesNav.astro';
+import TrackingScripts from '../../components/TrackingScripts.astro';
 import { renderMarkdown, extractHeadings } from '../../lib/markdown';
 import { getSettings } from '../../lib/settings';
 import { formatDate, parseTags } from '../../lib/utils';
@@ -27,12 +29,22 @@ if (!post || post.status !== 'published') {
   return new Response(null, { status: 404 });
 }
 
-// Increment views async + log daily view
+// Increment views async + log daily view + log referrer
 const today = new Date().toISOString().split('T')[0];
 db.update(posts).set({ views: post.views + 1 }).where(eq(posts.id, post.id)).run().catch(() => {});
 db.run(sql`
   INSERT INTO post_views_log (post_id, day, count) VALUES (${post.id}, ${today}, 1)
   ON CONFLICT(post_id, day) DO UPDATE SET count = count + 1
+`).catch(() => {});
+// Log referrer
+const refHeader = Astro.request.headers.get('referer') ?? '';
+const refHost = (() => {
+  try { return new URL(refHeader).hostname || 'direct'; }
+  catch { return 'direct'; }
+})();
+db.run(sql`
+  INSERT INTO post_referrers (post_id, day, referrer, count) VALUES (${post.id}, ${today}, ${refHost}, 1)
+  ON CONFLICT(post_id, day, referrer) DO UPDATE SET count = count + 1
 `).catch(() => {});
 
 const html = renderMarkdown(post.content);
@@ -59,6 +71,11 @@ const related = allPublished
   .sort((a, b) => b.score - a.score)
   .slice(0, 3)
   .map(({ post }) => post);
+
+// Series nav
+const seriesPosts = post.series
+  ? allPublished.filter((p) => p.series === post.series)
+  : [];
 ---
 
 <html lang="pt-BR">
@@ -77,6 +94,7 @@ const related = allPublished
   />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="alternate" type="application/rss+xml" title={config.site_name} href="/rss.xml" />
+  <TrackingScripts />
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
   <!-- Reading progress bar -->
@@ -125,6 +143,11 @@ const related = allPublished
         </span>
       </div>
     </header>
+
+    <!-- Series navigation -->
+    {post.series && seriesPosts.length > 1 && (
+      <SeriesNav series={post.series} posts={seriesPosts} currentId={post.id} />
+    )}
 
     <!-- AI Summary -->
     {post.aiSummary && (

@@ -29,6 +29,8 @@ export const subscribers = sqliteTable('subscribers', {
   name: text('name').notNull().default(''),
   createdAt: integer('created_at').notNull(),
   active: integer('active').notNull().default(1),
+  confirmed: integer('confirmed').notNull().default(1),
+  confirmationToken: text('confirmation_token'),
 });
 
 export const users = sqliteTable('users', {
@@ -53,6 +55,22 @@ export const postViewsLog = sqliteTable('post_views_log', {
   count: integer('count').notNull().default(0),
 });
 
+export const postReferrers = sqliteTable('post_referrers', {
+  postId: text('post_id').notNull(),
+  day: text('day').notNull(),       // YYYY-MM-DD
+  referrer: text('referrer').notNull(), // hostname or 'direct'
+  count: integer('count').notNull().default(0),
+});
+
+export const postRevisions = sqliteTable('post_revisions', {
+  id: text('id').primaryKey(),
+  postId: text('post_id').notNull(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  version: integer('version').notNull().default(1),
+  savedAt: integer('saved_at').notNull(),
+});
+
 export const posts = sqliteTable('posts', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
@@ -71,4 +89,6 @@ export const posts = sqliteTable('posts', {
   updatedAt: integer('updated_at').notNull(),
   featured: integer('featured').notNull().default(0),      // 1 = pinned on homepage
   scheduledAt: integer('scheduled_at'),                     // unix timestamp, publish at this time
+  series: text('series'),                                   // series name/slug
+  seriesOrder: integer('series_order'),                     // position within series
 });

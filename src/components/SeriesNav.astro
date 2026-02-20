@@ -1,0 +1,45 @@
+---
+interface Post {
+  id: string;
+  title: string;
+  slug: string;
+  series: string | null;
+  seriesOrder: number | null;
+}
+
+interface Props {
+  series: string;
+  posts: Post[];
+  currentId: string;
+}
+
+const { series, posts, currentId } = Astro.props;
+const sorted = [...posts].sort((a, b) => (a.seriesOrder ?? 0) - (b.seriesOrder ?? 0));
+---
+
+<div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 mb-8 not-prose">
+  <p class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+    Série: <a href={`/series/${encodeURIComponent(series)}`} class="text-indigo-400 hover:text-indigo-300 transition-colors">{series}</a>
+  </p>
+  <ol class="space-y-1.5">
+    {sorted.map((p, i) => {
+      const isCurrent = p.id === currentId;
+      return (
+        <li class="flex items-start gap-2">
+          <span class={`text-xs font-bold shrink-0 mt-0.5 w-5 text-right ${isCurrent ? 'text-indigo-400' : 'text-zinc-600'}`}>
+            {i + 1}.
+          </span>
+          {isCurrent ? (
+            <span class="text-sm text-indigo-300 font-medium leading-snug">
+              {p.title}
+            </span>
+          ) : (
+            <a href={`/blog/${p.slug}`} class="text-sm text-zinc-400 hover:text-zinc-100 leading-snug transition-colors">
+              {p.title}
+            </a>
+          )}
+        </li>
+      );
+    })}
+  </ol>
+</div>

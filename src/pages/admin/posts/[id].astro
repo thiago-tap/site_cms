@@ -2,8 +2,8 @@
 import Header from '../../../components/Header.astro';
 import AdminNav from '../../../components/admin/AdminNav.astro';
 import MarkdownToolbar from '../../../components/MarkdownToolbar.astro';
-import { getDb, posts } from '../../../lib/db';
-import { eq } from 'drizzle-orm';
+import { getDb, posts, postRevisions } from '../../../lib/db';
+import { eq, desc } from 'drizzle-orm';
 import { calcReadingTime, parseTags, generateId, slugify } from '../../../lib/utils';
 import '../../../styles/global.css';
 
@@ -58,6 +58,10 @@ if (Astro.request.method === 'POST') {
   const featured = form.get('featured') === 'on' ? 1 : 0;
   const scheduledAtRaw = (form.get('scheduled_at') as string)?.trim();
   const scheduledAt = scheduledAtRaw ? Math.floor(new Date(scheduledAtRaw).getTime() / 1000) : null;
+  const series = (form.get('series') as string)?.trim() || null;
+  const seriesOrderRaw = (form.get('series_order') as string)?.trim();
+  const seriesOrder = seriesOrderRaw ? parseInt(seriesOrderRaw, 10) : null;
+  const slugRaw = (form.get('slug') as string)?.trim();
 
   if (!title || !content) {
     error = 'Título e conteúdo são obrigatórios.';
@@ -66,28 +70,65 @@ if (Astro.request.method === 'POST') {
     const wasPublished = post.status === 'published';
     const willPublish = status === 'published';
 
-    await db.update(posts).set({
-      title,
-      content,
-      excerpt,
-      metaDescription,
-      coverImage,
-      tags: tagsRaw
-        ? JSON.stringify(tagsRaw.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8))
-        : '[]',
-      status: willPublish ? 'published' : 'draft',
-      aiSummary,
-      readingTime: calcReadingTime(content),
-      publishedAt: willPublish && !wasPublished ? now : post.publishedAt,
-      updatedAt: now,
-      featured,
-      scheduledAt,
-    }).where(eq(posts.id, id));
+    // Resolve slug
+    let newSlug = post.slug;
+    if (slugRaw && slugify(slugRaw) !== post.slug) {
+      const candidate = slugify(slugRaw);
+      const conflict = await db.select({ id: posts.id }).from(posts).where(eq(posts.slug, candidate)).get();
+      if (!conflict) newSlug = candidate;
+      else error = `Slug "${candidate}" já está em uso.`;
+    }
 
-    post = await db.select().from(posts).where(eq(posts.id, id)).get() ?? post;
-    success = 'Post atualizado!';
+    if (!error) {
+      // Save revision (keep last 20)
+      const lastRevs = await db.select({ version: postRevisions.version })
+        .from(postRevisions).where(eq(postRevisions.postId, id))
+        .orderBy(desc(postRevisions.savedAt)).all();
+      const nextVersion = (lastRevs[0]?.version ?? 0) + 1;
+      await db.insert(postRevisions).values({
+        id: generateId(),
+        postId: id,
+        title: post.title,
+        content: post.content,
+        version: nextVersion,
+        savedAt: now,
+      });
+      // Prune old revisions (keep 20)
+      if (lastRevs.length >= 20) {
+        const toDelete = lastRevs.slice(19).map((_, i) => lastRevs[19 + i]);
+        for (const rev of toDelete) {
+          if (rev) await db.delete(postRevisions).where(eq(postRevisions.version, rev.version));
+        }
+      }
+
+      await db.update(posts).set({
+        title,
+        slug: newSlug,
+        content,
+        excerpt,
+        metaDescription,
+        coverImage,
+        tags: tagsRaw
+          ? JSON.stringify(tagsRaw.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8))
+          : '[]',
+        status: willPublish ? 'published' : 'draft',
+        aiSummary,
+        readingTime: calcReadingTime(content),
+        publishedAt: willPublish && !wasPublished ? now : post.publishedAt,
+        updatedAt: now,
+        featured,
+        scheduledAt,
+        series,
+        seriesOrder,
+      }).where(eq(posts.id, id));
+
+      post = await db.select().from(posts).where(eq(posts.id, id)).get() ?? post;
+      success = 'Post atualizado!';
+    }
   }
 }
+
+const restored = Astro.url.searchParams.get('restored') === '1';
 
 const tags = parseTags(post.tags).join(', ');
 ---
@@ -108,7 +149,9 @@ const tags = parseTags(post.tags).join(', ');
     <div class="flex-1 min-w-0">
       <div class="flex items-center justify-between mb-8">
         <h1 class="text-xl font-bold truncate">Editar post</h1>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap justify-end">
+          <a href={`/admin/posts/${post.id}/preview`} target="_blank" class="text-sm text-amber-400 hover:text-amber-300 transition-colors">👁 Preview</a>
+          <a href={`/admin/posts/${post.id}/revisions`} class="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">📋 Histórico</a>
           {post.status === 'published' && (
             <a href={`/blog/${post.slug}`} target="_blank" class="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">Ver →</a>
           )}
@@ -122,6 +165,7 @@ const tags = parseTags(post.tags).join(', ');
 
       {error && <div class="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">{error}</div>}
       {success && <div class="mb-6 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm">{success}</div>}
+      {restored && <div class="mb-6 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-sm">Versão anterior restaurada com sucesso!</div>}
 
       <form method="POST" class="space-y-5">
         <div>
@@ -148,6 +192,18 @@ const tags = parseTags(post.tags).join(', ');
         </div>
 
         <div>
+          <label for="slug" class="block text-sm font-medium text-zinc-300 mb-1.5">
+            Slug <span class="text-zinc-600">(URL do post)</span>
+          </label>
+          <div class="flex items-center">
+            <span class="text-xs text-zinc-600 bg-zinc-800 border border-zinc-700 border-r-0 rounded-l-lg px-3 py-2.5">/blog/</span>
+            <input id="slug" name="slug" type="text" value={post.slug}
+              class="flex-1 bg-zinc-900 border border-zinc-700 rounded-r-lg px-3 py-2.5 text-sm font-mono text-zinc-100 focus:outline-none focus:border-indigo-500 transition-colors" />
+          </div>
+          <p class="text-xs text-zinc-600 mt-1">Alterar o slug quebra links externos existentes.</p>
+        </div>
+
+        <div>
           <label for="cover_image" class="block text-sm font-medium text-zinc-300 mb-1.5">Imagem de capa</label>
           <div class="flex gap-2">
             <input id="cover_image" name="cover_image" type="text" value={post.coverImage ?? ''} placeholder="https://... ou faça upload →"
@@ -156,6 +212,9 @@ const tags = parseTags(post.tags).join(', ');
               📤 Upload
               <input type="file" accept="image/*" id="cover-upload" class="hidden" />
             </label>
+            <button type="button" id="btn-ai-cover" class="flex items-center gap-1.5 px-3 py-2.5 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 text-violet-400 rounded-lg text-sm transition-colors">
+              🎨 IA
+            </button>
           </div>
           <div id="cover-preview" class={post.coverImage ? '' : 'hidden'}>
             <img id="cover-img" src={post.coverImage ?? ''} alt="Preview" class="mt-2 w-full max-h-48 object-cover rounded-lg" />
@@ -217,6 +276,21 @@ const tags = parseTags(post.tags).join(', ');
             <input id="scheduled_at" name="scheduled_at" type="datetime-local"
               value={post.scheduledAt ? new Date(post.scheduledAt * 1000).toISOString().slice(0, 16) : ''}
               class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-indigo-500 transition-colors" />
+          </div>
+        </div>
+
+        <div class="grid sm:grid-cols-3 gap-4">
+          <div class="sm:col-span-2">
+            <label for="series" class="block text-sm font-medium text-zinc-300 mb-1.5">Série <span class="text-zinc-600">(opcional)</span></label>
+            <input id="series" name="series" type="text" value={post.series ?? ''}
+              placeholder="Ex: Astro do zero, DevOps na prática..."
+              class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+          </div>
+          <div>
+            <label for="series_order" class="block text-sm font-medium text-zinc-300 mb-1.5">Ordem na série</label>
+            <input id="series_order" name="series_order" type="number" min="1"
+              value={post.seriesOrder ?? ''}
+              class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors" />
           </div>
         </div>
 
@@ -309,6 +383,32 @@ const tags = parseTags(post.tags).join(', ');
       const data = await callAI('/api/ai/meta', { content, title: titleEl.value });
       if (data.result) { metaEl.value = data.result; aiResult.textContent = '✓ Meta description gerada.'; aiResult.classList.remove('hidden'); }
       else { aiResult.textContent = data.error ?? 'Erro'; }
+    });
+
+    // AI cover image generation
+    document.getElementById('btn-ai-cover')?.addEventListener('click', async () => {
+      const title = titleEl.value || contentEl.value.slice(0, 100);
+      if (!title.trim()) { alert('Escreva o título ou conteúdo primeiro.'); return; }
+      const btn = document.getElementById('btn-ai-cover') as HTMLButtonElement;
+      btn.textContent = '⏳ Gerando...';
+      btn.disabled = true;
+      try {
+        const postId = window.location.pathname.split('/').filter(Boolean).pop();
+        const res = await fetch('/api/ai/cover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: title, postId }),
+        });
+        const data = await res.json() as { ok?: boolean; url?: string; dataUrl?: string; error?: string };
+        if (data.ok) {
+          const src = data.url ?? data.dataUrl ?? '';
+          coverInput.value = data.url ?? '';
+          coverImg.src = src;
+          coverPreview.classList.remove('hidden');
+        } else { alert(data.error ?? 'Erro ao gerar imagem.'); }
+      } catch { alert('Erro ao gerar imagem.'); }
+      btn.textContent = '🎨 IA';
+      btn.disabled = false;
     });
 
     coverInput.addEventListener('input', () => {

@@ -1,0 +1,80 @@
+---
+import Header from '../../../../components/Header.astro';
+import { getDb, posts } from '../../../../lib/db';
+import { eq } from 'drizzle-orm';
+import { renderMarkdown } from '../../../../lib/markdown';
+import { parseTags, formatDate } from '../../../../lib/utils';
+import '../../../../styles/global.css';
+
+if (!Astro.locals.user) {
+  return Astro.redirect('/login');
+}
+
+const { id } = Astro.params;
+if (!id) return Astro.redirect('/admin/posts');
+
+const db = getDb(Astro.locals.runtime.env.DB);
+const post = await db.select().from(posts).where(eq(posts.id, id)).get();
+
+if (!post) return new Response(null, { status: 404 });
+
+const html = renderMarkdown(post.content);
+const tags = parseTags(post.tags);
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Preview: {post.title}</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
+  <!-- Preview banner -->
+  <div class="sticky top-0 z-50 bg-amber-500 text-amber-950 text-sm font-semibold px-4 py-2 flex items-center justify-between">
+    <span>👁 Modo Preview — este post {post.status === 'published' ? 'está publicado' : 'é um rascunho e não está visível ao público'}</span>
+    <a href={`/admin/posts/${post.id}`} class="underline hover:no-underline">← Voltar ao editor</a>
+  </div>
+
+  <Header />
+
+  <main class="max-w-3xl mx-auto px-4 py-12 flex-1 w-full">
+    {post.coverImage && (
+      <img
+        src={post.coverImage}
+        alt={post.title}
+        class="w-full rounded-xl mb-8 aspect-video object-cover"
+      />
+    )}
+
+    <header class="mb-8">
+      {tags.length > 0 && (
+        <div class="flex flex-wrap gap-1.5 mb-4">
+          {tags.map((tag) => (
+            <span class="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-md">#{tag}</span>
+          ))}
+        </div>
+      )}
+      <h1 class="text-3xl font-bold text-zinc-100 mb-4 leading-tight">{post.title}</h1>
+      <div class="flex items-center gap-4 text-sm text-zinc-500">
+        {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
+        <span>{post.readingTime} min de leitura</span>
+        <span class="bg-amber-500/15 text-amber-400 text-xs px-2 py-0.5 rounded font-medium">
+          {post.status === 'published' ? 'Publicado' : 'Rascunho'}
+        </span>
+      </div>
+    </header>
+
+    {post.aiSummary && (
+      <div class="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-5 mb-8">
+        <p class="text-xs font-semibold text-indigo-400 mb-2">Resumo gerado por IA</p>
+        <p class="text-sm text-zinc-300 leading-relaxed">{post.aiSummary}</p>
+      </div>
+    )}
+
+    <div class="prose" id="post-content">
+      <Fragment set:html={html} />
+    </div>
+  </main>
+</body>
+</html>

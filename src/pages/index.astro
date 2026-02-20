@@ -2,6 +2,7 @@
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import PostCard from '../components/PostCard.astro';
+import TrackingScripts from '../components/TrackingScripts.astro';
 import { getDb, posts } from '../lib/db';
 import { eq, desc } from 'drizzle-orm';
 import '../styles/global.css';
@@ -37,6 +38,7 @@ const allTags = [...new Set(allPosts.flatMap((p) => {
   <meta name="description" content="Blog sobre desenvolvimento web, cloud e tecnologia." />
   <link rel="alternate" type="application/rss+xml" title="Blog do Thiago RSS" href="/rss.xml" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <TrackingScripts />
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
   <Header />
