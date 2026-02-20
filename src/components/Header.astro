@@ -5,7 +5,7 @@ const path = Astro.url.pathname;
 const config = Astro.locals.runtime?.env?.DB
   ? await getSettings(Astro.locals.runtime.env.DB)
   : null;
-const siteName = config?.site_name ?? 'CatitéoBlog';
+const siteName = config?.site_name ?? 'Blog do Thiago';
 const logoUrl = config?.logo_url ?? '';
 ---
 

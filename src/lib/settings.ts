@@ -21,7 +21,7 @@ export type SiteSettings = {
 };
 
 export const defaultSettings: SiteSettings = {
-  site_name: 'CatitéoBlog',
+  site_name: 'Blog do Thiago',
   site_description: 'Blog sobre desenvolvimento web, cloud e tecnologia.',
   accent_color: '#6366f1',
   author_name: '',

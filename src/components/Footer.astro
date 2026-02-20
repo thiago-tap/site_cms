@@ -4,7 +4,7 @@ const year = new Date().getFullYear();
 const config = Astro.locals.runtime?.env?.DB
   ? await getSettings(Astro.locals.runtime.env.DB)
   : null;
-const siteName = config?.site_name ?? 'CatitéoBlog';
+const siteName = config?.site_name ?? 'Blog do Thiago';
 ---
 
 <footer class="border-t border-zinc-800 mt-20">

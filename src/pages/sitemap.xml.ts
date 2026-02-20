@@ -3,7 +3,7 @@ import { getDb, posts } from '../lib/db';
 import { eq, desc } from 'drizzle-orm';
 export const GET: APIRoute = async ({ locals }) => {
   const db = getDb(locals.runtime.env.DB);
-  const siteUrl = locals.runtime.env.SITE_URL ?? 'https://cms.catiteo.com';
+  const siteUrl = locals.runtime.env.SITE_URL ?? 'https://thiago.catiteo.com';
 
   const allPosts = await db
     .select({ slug: posts.slug, updatedAt: posts.updatedAt })

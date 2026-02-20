@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES
-  ('site_name', 'CatitéoBlog', unixepoch()),
+  ('site_name', 'Blog do Thiago', unixepoch()),
   ('site_description', 'Blog sobre desenvolvimento web, cloud e tecnologia.', unixepoch()),
   ('accent_color', '#6366f1', unixepoch()),
   ('author_name', '', unixepoch()),

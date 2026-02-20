@@ -1,10 +1,10 @@
-# CatitéoCMS
+# Blog do Thiago
 
-> Blog CMS com painel admin, posts em Markdown, e IA para geração de resumos e sugestão de tags.
+> Blog pessoal com painel admin, posts em Markdown, IA para resumos/tags/meta, upload de imagens via MinIO e muito mais.
 
-[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-cms.catiteo.com-6366f1?style=for-the-badge)](https://cms.catiteo.com/)
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-thiago.catiteo.com-6366f1?style=for-the-badge)](https://thiago.catiteo.com/)
 
-**Live:** [cms.catiteo.com](https://cms.catiteo.com/) · **Repositório:** [github.com/thiago-tap/site_cms](https://github.com/thiago-tap/site_cms)
+**Live:** [thiago.catiteo.com](https://thiago.catiteo.com/) · **Repositório:** [github.com/thiago-tap/site_cms](https://github.com/thiago-tap/site_cms)
 
 ![Astro](https://img.shields.io/badge/Astro-5-FF5D01?logo=astro&logoColor=white)
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white)
@@ -16,37 +16,55 @@
 
 ## Sobre o projeto
 
-**CatitéoCMS** é um blog com painel de administração construído com **Astro 5** e hospedado no edge da Cloudflare. O projeto faz parte de um portfólio de três aplicações que demonstram frameworks modernos diferentes:
+Blog pessoal construído com **Astro 5** e hospedado no edge da Cloudflare. Parte de um portfólio de três aplicações que demonstram frameworks modernos diferentes:
 
 | Projeto | Framework | Link |
 |---|---|---|
 | DevToolbox | Next.js 15 (App Router) | [devtools.catiteo.com](https://devtools.catiteo.com) |
 | SnipHub | SvelteKit 2 + Svelte 5 | [snippets.catiteo.com](https://snippets.catiteo.com) |
-| CatitéoCMS | **Astro 5** | [cms.catiteo.com](https://cms.catiteo.com) |
-
-### Por que Astro?
-
-- **Zero JS por padrão** — páginas do blog são HTML puro, sem JavaScript enviado ao cliente
-- **Islands Architecture** — só hidrata componentes interativos (botões AI, formulários)
-- **SSR híbrido** — blog estático rápido + admin dinâmico no mesmo projeto
-- **View Transitions** — navegação suave sem SPA overhead
-- **Sem framework de UI** — HTML e vanilla JS onde necessário, sem React/Vue/Svelte
+| Blog do Thiago | **Astro 5** | [thiago.catiteo.com](https://thiago.catiteo.com) |
 
 ---
 
 ## Funcionalidades
 
+### Blog público
+
 | Feature | Descrição |
 |---|---|
-| Blog público | Lista de posts com filtro por tag, RSS feed |
-| Post individual | Markdown renderizado server-side, contagem de views |
-| Painel Admin | Dashboard com stats, CRUD de posts protegido por login |
-| GitHub OAuth | Login seguro para acessar o admin |
-| Editor Markdown | Textarea com suporte a MDX/Markdown no admin |
-| IA: Resumo | Llama 3 8B gera resumo do post em PT-BR |
-| IA: Tags | Llama 3 8B sugere tags relevantes para o conteúdo |
+| Lista de posts | Filtro por tag, paginação, busca full-text |
+| Post individual | Markdown renderizado, contagem de views, TOC automático |
+| SEO completo | Open Graph, Twitter Card, JSON-LD structured data |
+| Compartilhamento | Botões para Twitter/X, LinkedIn, WhatsApp e copiar link |
+| Posts relacionados | Sugeridos automaticamente por tags em comum |
+| Comentários | Giscus (GitHub Discussions) configurável |
+| Newsletter | Formulário de inscrição com armazenamento em D1 |
 | RSS Feed | `/rss.xml` automático com todos os posts publicados |
-| Edge Deploy | Cloudflare Pages + D1 na edge global |
+| Sitemap | `/sitemap.xml` dinâmico |
+| Páginas estáticas | Sobre e Contato editáveis pelo admin |
+| Formulário de contato | Mensagens armazenadas e gerenciadas no admin |
+
+### Painel Admin
+
+| Feature | Descrição |
+|---|---|
+| Dashboard | Stats: posts, views, contatos não lidos, assinantes |
+| Editor Markdown | Toolbar com formatação, inserção de imagens e upload |
+| Upload de imagens | Integração com MinIO (S3-compatible self-hosted) |
+| IA: Resumo | Llama 3 8B gera resumo do post em PT-BR |
+| IA: Tags | Llama 3 8B sugere tags relevantes |
+| IA: Meta description | Llama 3 8B gera meta description para SEO |
+| Gerenciar páginas | Editar conteúdo de Sobre e Contato via Markdown |
+| Gerenciar contatos | Listar, marcar como lido, responder por e-mail, excluir |
+| Gerenciar assinantes | Listar, ativar/desativar, excluir |
+| Configurações | Nome do site, descrição, autor, redes sociais, Giscus, newsletter |
+
+### Auth & Segurança
+
+| Feature | Descrição |
+|---|---|
+| GitHub OAuth | Login seguro via Arctic v2 |
+| Allowlist | Apenas o usuário configurado em `ADMIN_GITHUB_USERNAME` acessa o admin |
 
 ---
 
@@ -60,6 +78,7 @@ Auth:         GitHub OAuth via Arctic v2
 Markdown:     marked v15 (server-side rendering)
 Estilo:       Tailwind CSS 4 (via @tailwindcss/vite)
 IA:           Cloudflare Workers AI — Llama 3 8B
+Storage:      MinIO (S3-compatible) via @aws-sdk/client-s3
 Deploy:       Cloudflare Pages
 ```
 
@@ -77,40 +96,66 @@ site_cms/
 │   │   └── global.css                  # Tailwind 4 + classes .prose para markdown
 │   ├── lib/
 │   │   ├── auth.ts                     # GitHub OAuth, sessions, upsert user
-│   │   ├── markdown.ts                 # renderMarkdown() via marked
+│   │   ├── markdown.ts                 # renderMarkdown() + extractHeadings() via marked
+│   │   ├── settings.ts                 # getSettings() / saveSettings() no D1
 │   │   ├── utils.ts                    # generateId, slugify, formatDate, calcReadingTime
 │   │   └── db/
-│   │       ├── schema.ts               # Tabelas: users, sessions, posts
+│   │       ├── schema.ts               # Tabelas: users, sessions, posts, settings, pages, contacts, subscribers
 │   │       └── index.ts                # getDb(D1Database) → DrizzleD1Database
 │   ├── components/
-│   │   ├── Header.astro                # Navbar com links e avatar do usuário
-│   │   ├── Footer.astro                # Links RSS e GitHub
+│   │   ├── Header.astro                # Navbar dinâmica com nome e logo do site
+│   │   ├── Footer.astro                # Links sociais e RSS
 │   │   ├── PostCard.astro              # Card de post para a listagem
+│   │   ├── SEO.astro                   # Open Graph, Twitter Card, JSON-LD
+│   │   ├── TOC.astro                   # Sumário automático dos headings
+│   │   ├── ShareButtons.astro          # Compartilhar no Twitter, LinkedIn, WhatsApp
+│   │   ├── RelatedPosts.astro          # Posts relacionados por tags
+│   │   ├── GiscusComments.astro        # Comentários via GitHub Discussions
+│   │   ├── NewsletterForm.astro        # Formulário de inscrição na newsletter
+│   │   ├── MarkdownToolbar.astro       # Toolbar do editor com upload de imagem
 │   │   └── admin/
-│   │       └── AdminNav.astro          # Sidebar do painel admin
+│   │       └── AdminNav.astro          # Sidebar do painel admin com badges
 │   └── pages/
 │       ├── index.astro                 # Blog home — lista posts + filtro por tag
+│       ├── busca.astro                 # Busca full-text nos posts
+│       ├── sobre.astro                 # Página Sobre (conteúdo do D1)
+│       ├── contato.astro               # Página Contato com formulário
+│       ├── sitemap.xml.ts              # Sitemap dinâmico
 │       ├── blog/
-│       │   └── [slug].astro            # Post individual com markdown + AI summary
+│       │   └── [slug].astro            # Post com markdown, TOC, SEO, Giscus
 │       ├── rss.xml.ts                  # RSS feed dinâmico
 │       ├── auth/
 │       │   ├── github.ts               # GET → redireciona para GitHub OAuth
-│       │   ├── callback.ts             # GET → processa callback, cria sessão
+│       │   ├── callback.ts             # GET → processa callback, valida allowlist
 │       │   └── logout.ts               # POST → deleta sessão
 │       ├── admin/
 │       │   ├── index.astro             # Dashboard com stats
-│       │   └── posts/
-│       │       ├── index.astro         # Lista todos os posts
-│       │       ├── new.astro           # Criar post com editor + IA
-│       │       └── [id].astro          # Editar/excluir post
+│       │   ├── posts/
+│       │   │   ├── index.astro         # Lista todos os posts
+│       │   │   ├── new.astro           # Criar post com editor + IA + upload
+│       │   │   └── [id].astro          # Editar/duplicar/excluir post
+│       │   ├── pages/
+│       │   │   └── [slug].astro        # Editar páginas estáticas (sobre, contato)
+│       │   ├── contacts/
+│       │   │   └── index.astro         # Gerenciar mensagens de contato
+│       │   ├── subscribers/
+│       │   │   └── index.astro         # Gerenciar assinantes da newsletter
+│       │   └── settings/
+│       │       └── index.astro         # Configurações do site
 │       └── api/
+│           ├── upload.ts               # POST → upload de imagem para MinIO
+│           ├── contact.ts              # POST → salva mensagem de contato
+│           ├── subscribe.ts            # POST → inscreve na newsletter
 │           └── ai/
 │               ├── summary.ts          # POST → Llama 3 gera resumo em PT-BR
-│               └── tags.ts             # POST → Llama 3 sugere tags
+│               ├── tags.ts             # POST → Llama 3 sugere tags
+│               └── meta.ts             # POST → Llama 3 gera meta description
 ├── drizzle/
-│   └── 0000_init.sql                   # Migration: users, sessions, posts
-├── astro.config.mjs                    # output: server, @astrojs/cloudflare
-├── wrangler.toml                       # D1 binding, AI binding, Pages config
+│   ├── 0000_init.sql                   # Migration: users, sessions, posts
+│   ├── 0001_features.sql               # Migration: settings, pages, contacts, subscribers
+│   └── 0002_rename_site.sql            # Migration: atualiza site_name
+├── astro.config.mjs
+├── wrangler.toml                       # D1, AI binding, SITE_URL
 ├── drizzle.config.ts
 └── package.json
 ```
@@ -120,20 +165,15 @@ site_cms/
 ## Schema do banco
 
 ```sql
-users    (id, github_id, username, avatar_url, created_at)
-sessions (id, user_id → users, expires_at)
-posts    (
-  id, title, slug UNIQUE,
-  content,           -- Markdown completo
-  excerpt,           -- Resumo manual (para cards)
-  cover_image,       -- URL da imagem de capa
-  tags,              -- JSON array: '["astro","cloudflare"]'
-  status,            -- 'draft' | 'published'
-  ai_summary,        -- Resumo gerado pela IA (exibido no topo do post)
-  reading_time,      -- Calculado automaticamente (palavras / 200)
-  views,             -- Incrementado assincronamente
-  published_at, created_at, updated_at
-)
+users       (id, github_id, username, avatar_url, created_at)
+sessions    (id, user_id → users, expires_at)
+posts       (id, title, slug, content, excerpt, cover_image, tags,
+             status, ai_summary, meta_description, reading_time,
+             views, published_at, created_at, updated_at)
+settings    (key, value, updated_at)        -- configurações do site
+pages       (slug, title, content, updated_at) -- sobre, contato
+contacts    (id, name, email, subject, message, created_at, read)
+subscribers (id, email, name, created_at, active)
 ```
 
 ---
@@ -164,11 +204,13 @@ npx wrangler d1 create site-cms-db
 
 Copie o `database_id` e atualize o `wrangler.toml`.
 
-### 3. Rode a migration
+### 3. Rode as migrations
 
 ```bash
 npm run db:migrate:local    # banco local
 npm run db:migrate:remote   # banco em produção
+npx wrangler d1 execute site-cms-db --local  --file=./drizzle/0001_features.sql
+npx wrangler d1 execute site-cms-db --remote --file=./drizzle/0001_features.sql
 ```
 
 ### 4. Configure o GitHub OAuth
@@ -180,9 +222,31 @@ npm run db:migrate:remote   # banco em produção
 ```bash
 GITHUB_CLIENT_ID=seu_client_id
 GITHUB_CLIENT_SECRET=seu_client_secret
+ADMIN_GITHUB_USERNAME=seu_usuario_github
+SITE_URL=http://localhost:4321
 ```
 
-### 5. Inicie o servidor
+### 5. (Opcional) Configure o MinIO para upload de imagens
+
+Adicione ao `.dev.vars`:
+
+```bash
+MINIO_ENDPOINT=https://seu-minio.exemplo.com
+MINIO_ACCESS_KEY=sua_access_key
+MINIO_SECRET_KEY=sua_secret_key
+MINIO_BUCKET=nome-do-bucket
+MINIO_PUBLIC_URL=https://seu-minio.exemplo.com/nome-do-bucket
+```
+
+O bucket precisa ter política de leitura pública. Com o `mc`:
+
+```bash
+mc alias set minio https://seu-minio.exemplo.com ACCESS_KEY SECRET_KEY
+mc mb minio/nome-do-bucket
+mc anonymous set download minio/nome-do-bucket
+```
+
+### 6. Inicie o servidor
 
 ```bash
 npm run dev
@@ -199,9 +263,14 @@ Acesse: `http://localhost:4321`
 3. Build:
    - **Build command**: `npm run build`
    - **Output directory**: `dist`
-4. **Variables**: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
+4. **Secrets** (Settings → Environment Variables):
+   - `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
+   - `ADMIN_GITHUB_USERNAME`
+   - `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` *(se usar upload de imagens)*
 5. **D1 binding**: `DB` → `site-cms-db`
 6. **AI binding**: `AI` (ativar Workers AI)
+
+> `SITE_URL` e variáveis não sensíveis do MinIO são definidas no `wrangler.toml`.
 
 ---
 
@@ -224,4 +293,4 @@ MIT — use à vontade, inclusive comercialmente.
 
 ---
 
-Construído com Astro 5, Tailwind CSS 4, Drizzle ORM e Cloudflare Workers AI.
+Construído com Astro 5, Tailwind CSS 4, Drizzle ORM, Cloudflare Workers AI e MinIO.

@@ -11,7 +11,7 @@ export const GET: APIRoute = async ({ locals }) => {
     .limit(20)
     .all();
 
-  const siteUrl = locals.runtime.env.SITE_URL ?? 'https://cms.catiteo.com';
+  const siteUrl = locals.runtime.env.SITE_URL ?? 'https://thiago.catiteo.com';
 
   const items = allPosts
     .map((post) => `
@@ -27,7 +27,7 @@ export const GET: APIRoute = async ({ locals }) => {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>CatitéoBlog</title>
+    <title>Blog do Thiago</title>
     <link>${siteUrl}</link>
     <description>Blog sobre desenvolvimento web, cloud e tecnologia.</description>
     <language>pt-BR</language>

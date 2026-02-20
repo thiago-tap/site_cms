@@ -33,7 +33,7 @@ db.update(posts).set({ views: post.views + 1 }).where(eq(posts.id, post.id)).run
 const html = renderMarkdown(post.content);
 const headings = extractHeadings(post.content);
 const tags = parseTags(post.tags);
-const siteUrl = Astro.locals.runtime.env.SITE_URL ?? 'https://cms.catiteo.com';
+const siteUrl = Astro.locals.runtime.env.SITE_URL ?? 'https://thiago.catiteo.com';
 const postUrl = `${siteUrl}/blog/${post.slug}`;
 
 // Related posts (same tags, limit 3)
