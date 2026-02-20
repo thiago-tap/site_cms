@@ -80,7 +80,11 @@ const allTags = [...new Set(allPosts.flatMap((p) => {
       </div>
     ) : (
       <div class="grid gap-4 sm:grid-cols-2">
-        {filteredPosts.map((post) => <PostCard post={post} />)}
+        {filteredPosts.map((post, i) => (
+          <div class="fade-in-up" style={`animation-delay: ${i * 60}ms`}>
+            <PostCard post={post} />
+          </div>
+        ))}
       </div>
     )}
   </main>

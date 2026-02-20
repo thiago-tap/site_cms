@@ -11,6 +11,16 @@ const encTitle = encodeURIComponent(title);
 <div class="flex flex-wrap items-center gap-3 my-8 pt-8 border-t border-zinc-800 not-prose">
   <span class="text-sm text-zinc-500 mr-1">Compartilhar:</span>
 
+  <!-- Web Share API (mobile) -->
+  <button
+    id="btn-native-share"
+    data-url={url}
+    data-title={title}
+    class="hidden items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+  >
+    📤 Compartilhar
+  </button>
+
   <a
     href={`https://twitter.com/intent/tweet?url=${enc}&text=${encTitle}`}
     target="_blank" rel="noopener noreferrer"
@@ -45,11 +55,22 @@ const encTitle = encodeURIComponent(title);
 </div>
 
 <script>
-  const btn = document.getElementById('btn-copy-link') as HTMLButtonElement;
-  btn?.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(btn.dataset.url!);
-    const original = btn.textContent;
-    btn.textContent = '✓ Copiado!';
-    setTimeout(() => { btn.textContent = original; }, 2000);
+  // Copy link
+  const copyBtn = document.getElementById('btn-copy-link') as HTMLButtonElement;
+  copyBtn?.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(copyBtn.dataset.url!);
+    const orig = copyBtn.textContent;
+    copyBtn.textContent = '✓ Copiado!';
+    setTimeout(() => { copyBtn.textContent = orig; }, 2000);
   });
+
+  // Web Share API on mobile
+  const shareBtn = document.getElementById('btn-native-share') as HTMLButtonElement;
+  if (shareBtn && navigator.share) {
+    shareBtn.classList.remove('hidden');
+    shareBtn.classList.add('flex');
+    shareBtn.addEventListener('click', () => {
+      navigator.share({ title: shareBtn.dataset.title, url: shareBtn.dataset.url });
+    });
+  }
 </script>

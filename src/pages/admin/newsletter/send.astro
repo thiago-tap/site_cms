@@ -1,0 +1,95 @@
+---
+import Header from '../../../components/Header.astro';
+import AdminNav from '../../../components/admin/AdminNav.astro';
+import { getDb } from '../../../lib/db';
+import { subscribers } from '../../../lib/db/schema';
+import { eq } from 'drizzle-orm';
+import '../../../styles/global.css';
+
+const db = getDb(Astro.locals.runtime.env.DB);
+const activeCount = (await db.select().from(subscribers).where(eq(subscribers.active, 1)).all()).length;
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Enviar Newsletter — Admin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+  <Header />
+  <div class="max-w-5xl mx-auto px-4 py-8 flex gap-8">
+    <AdminNav />
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-8">
+        <h1 class="text-2xl font-bold">Enviar Newsletter</h1>
+        <a href="/admin/subscribers" class="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">← Assinantes</a>
+      </div>
+
+      <div class="mb-6 p-4 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-400">
+        <span class="text-zinc-200 font-medium">{activeCount}</span> assinante{activeCount !== 1 ? 's' : ''} ativo{activeCount !== 1 ? 's' : ''} receberão este e-mail.
+      </div>
+
+      <div id="result" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-zinc-300 mb-1.5">Assunto do e-mail</label>
+          <input id="subject" type="text" placeholder="Ex: Novo post: Como usar Astro 5"
+            class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-zinc-300 mb-1.5">Conteúdo (HTML ou texto)</label>
+          <textarea id="htmlContent" rows={12} placeholder="<h2>Olá!</h2><p>Novo post publicado...</p>"
+            class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm font-mono text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors resize-y"></textarea>
+        </div>
+
+        <button id="btn-send"
+          class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg font-medium text-sm transition-colors">
+          Enviar para {activeCount} assinante{activeCount !== 1 ? 's' : ''}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const btn = document.getElementById('btn-send') as HTMLButtonElement;
+    const result = document.getElementById('result')!;
+
+    btn.addEventListener('click', async () => {
+      const subject = (document.getElementById('subject') as HTMLInputElement).value.trim();
+      const html = (document.getElementById('htmlContent') as HTMLTextAreaElement).value.trim();
+      if (!subject || !html) { alert('Preencha assunto e conteúdo.'); return; }
+      if (!confirm(`Enviar para todos os assinantes ativos?`)) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+      result.className = 'hidden mb-4 p-3 rounded-lg text-sm';
+
+      try {
+        const res = await fetch('/api/newsletter/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subject, html }),
+        });
+        const data = await res.json() as { ok?: boolean; sent?: number; failed?: number; error?: string };
+        if (data.ok) {
+          result.className = 'mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-sm text-green-400';
+          result.textContent = `✓ Enviado para ${data.sent} assinante(s). Falhas: ${data.failed ?? 0}.`;
+        } else {
+          result.className = 'mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400';
+          result.textContent = data.error ?? 'Erro ao enviar.';
+        }
+      } catch {
+        result.className = 'mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400';
+        result.textContent = 'Erro de conexão.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Enviar';
+      }
+    });
+  </script>
+</body>
+</html>

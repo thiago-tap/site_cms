@@ -1,7 +1,8 @@
 ---
 import Header from '../../components/Header.astro';
 import AdminNav from '../../components/admin/AdminNav.astro';
-import { getDb, posts } from '../../lib/db';
+import { getDb, posts, postViewsLog } from '../../lib/db';
+import { sql } from 'drizzle-orm';
 import '../../styles/global.css';
 
 const db = getDb(Astro.locals.runtime.env.DB);
@@ -20,6 +21,34 @@ const stats = [
 
 const recentPosts = allPosts
   .sort((a, b) => b.updatedAt - a.updatedAt)
+  .slice(0, 5);
+
+// Analytics: views per day for last 14 days
+const days: string[] = [];
+for (let i = 13; i >= 0; i--) {
+  const d = new Date();
+  d.setDate(d.getDate() - i);
+  days.push(d.toISOString().split('T')[0]);
+}
+
+// Fetch log rows for the last 14 days
+const minDay = days[0];
+const viewsRows = await db.run(
+  sql`SELECT day, SUM(count) as total FROM post_views_log WHERE day >= ${minDay} GROUP BY day`
+) as { results: { day: string; total: number }[] };
+
+const viewsByDay = new Map<string, number>();
+for (const row of (viewsRows.results ?? [])) {
+  viewsByDay.set(row.day, Number(row.total));
+}
+
+const chartData = days.map((d) => ({ day: d, count: viewsByDay.get(d) ?? 0 }));
+const maxCount = Math.max(...chartData.map((d) => d.count), 1);
+
+// Top posts by views
+const topPosts = [...allPosts]
+  .filter((p) => p.status === 'published' && p.views > 0)
+  .sort((a, b) => b.views - a.views)
   .slice(0, 5);
 ---
 
@@ -54,32 +83,90 @@ const recentPosts = allPosts
         ))}
       </div>
 
-      <!-- Recent posts -->
-      <div>
-        <h2 class="text-sm font-medium text-zinc-500 mb-3 uppercase tracking-wider">Posts recentes</h2>
-        {recentPosts.length === 0 ? (
-          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center text-zinc-600">
-            Nenhum post ainda. <a href="/admin/posts/new" class="text-indigo-400 hover:text-indigo-300">Criar primeiro post</a>
-          </div>
-        ) : (
-          <div class="space-y-2">
-            {recentPosts.map((post) => (
-              <a href={`/admin/posts/${post.id}`} class="flex items-center justify-between bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-lg px-4 py-3 transition-colors group">
-                <div>
-                  <p class="text-sm font-medium text-zinc-200 group-hover:text-zinc-100">{post.title}</p>
-                  <p class="text-xs text-zinc-600 mt-0.5">/blog/{post.slug}</p>
-                </div>
-                <span class={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  post.status === 'published'
-                    ? 'bg-green-500/10 text-green-400'
-                    : 'bg-yellow-500/10 text-yellow-400'
-                }`}>
-                  {post.status === 'published' ? 'Publicado' : 'Rascunho'}
+      <!-- Analytics Chart -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 mb-8">
+        <h2 class="text-sm font-medium text-zinc-400 mb-4 uppercase tracking-wider">Views últimos 14 dias</h2>
+        <div class="flex items-end gap-1.5 h-32">
+          {chartData.map(({ day, count }) => {
+            const pct = Math.round((count / maxCount) * 100);
+            const label = day.slice(5); // MM-DD
+            return (
+              <div class="flex-1 flex flex-col items-center gap-1 group relative">
+                <div
+                  class="w-full bg-indigo-600/70 hover:bg-indigo-500 rounded-sm transition-colors cursor-default"
+                  style={`height: ${Math.max(pct, 2)}%`}
+                  title={`${day}: ${count} views`}
+                ></div>
+                <span class="text-[9px] text-zinc-600 group-hover:text-zinc-400 transition-colors leading-none">
+                  {label}
                 </span>
-              </a>
-            ))}
-          </div>
+              </div>
+            );
+          })}
+        </div>
+        {chartData.every((d) => d.count === 0) && (
+          <p class="text-center text-xs text-zinc-600 mt-2">Nenhuma visita registrada ainda.</p>
         )}
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-6">
+        <!-- Recent posts -->
+        <div>
+          <h2 class="text-sm font-medium text-zinc-500 mb-3 uppercase tracking-wider">Posts recentes</h2>
+          {recentPosts.length === 0 ? (
+            <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center text-zinc-600">
+              Nenhum post ainda. <a href="/admin/posts/new" class="text-indigo-400 hover:text-indigo-300">Criar primeiro post</a>
+            </div>
+          ) : (
+            <div class="space-y-2">
+              {recentPosts.map((post) => (
+                <a href={`/admin/posts/${post.id}`} class="flex items-center justify-between bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-lg px-4 py-3 transition-colors group">
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-zinc-200 group-hover:text-zinc-100 truncate">{post.title}</p>
+                    <p class="text-xs text-zinc-600 mt-0.5">{post.views} views</p>
+                  </div>
+                  <span class={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ml-2 ${
+                    post.status === 'published'
+                      ? 'bg-green-500/10 text-green-400'
+                      : 'bg-yellow-500/10 text-yellow-400'
+                  }`}>
+                    {post.status === 'published' ? 'Publicado' : 'Rascunho'}
+                  </span>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <!-- Top posts by views -->
+        <div>
+          <h2 class="text-sm font-medium text-zinc-500 mb-3 uppercase tracking-wider">Top posts por views</h2>
+          {topPosts.length === 0 ? (
+            <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center text-zinc-600 text-sm">
+              Nenhuma visualização ainda.
+            </div>
+          ) : (
+            <div class="space-y-2">
+              {topPosts.map((post, i) => {
+                const barPct = Math.round((post.views / (topPosts[0]?.views || 1)) * 100);
+                return (
+                  <a href={`/admin/posts/${post.id}`} class="flex items-center gap-3 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-lg px-4 py-3 transition-colors group">
+                    <span class="text-xs font-bold text-zinc-600 w-4 shrink-0">#{i + 1}</span>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-xs font-medium text-zinc-300 group-hover:text-zinc-100 truncate">{post.title}</p>
+                      <div class="flex items-center gap-2 mt-1">
+                        <div class="flex-1 bg-zinc-800 rounded-full h-1">
+                          <div class="bg-indigo-500 h-1 rounded-full transition-all" style={`width:${barPct}%`}></div>
+                        </div>
+                        <span class="text-xs text-zinc-500 shrink-0">{post.views}</span>
+                      </div>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   </div>

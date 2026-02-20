@@ -1,0 +1,33 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>404 — Página não encontrada</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
+  <Header />
+
+  <main class="flex-1 flex flex-col items-center justify-center px-4 text-center">
+    <p class="text-8xl font-black text-zinc-800 select-none mb-4">404</p>
+    <h1 class="text-2xl font-bold text-zinc-200 mb-2">Página não encontrada</h1>
+    <p class="text-zinc-500 mb-8 max-w-sm">O link que você acessou não existe ou foi removido.</p>
+    <div class="flex flex-wrap gap-3 justify-center">
+      <a href="/" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors">
+        ← Ir para o blog
+      </a>
+      <a href="/busca" class="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm font-medium transition-colors">
+        Buscar posts
+      </a>
+    </div>
+  </main>
+
+  <Footer />
+</body>
+</html>

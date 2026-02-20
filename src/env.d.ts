@@ -15,6 +15,9 @@ type Env = {
   MINIO_BUCKET?: string;        // bucket name
   MINIO_PUBLIC_URL?: string;    // public base URL (optional, defaults to ENDPOINT/BUCKET)
   MINIO_REGION?: string;        // optional, default 'us-east-1'
+  OPENAI_API_KEY?: string;   // GPT-4o-mini for grammar, titles, translation
+  RESEND_API_KEY?: string;   // Resend.com for newsletter email sending
+  RESEND_FROM?: string;      // e.g. "Blog do Thiago <noreply@thiago.catiteo.com>"
 };
 
 type Runtime = import('@astrojs/cloudflare').Runtime<Env>;

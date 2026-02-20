@@ -29,13 +29,20 @@ const filtered = filter === 'all' ? allPosts : allPosts.filter((p) => p.status =
     <div class="flex-1 min-w-0">
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold">Posts</h1>
-        <a href="/admin/posts/new" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors">
-          + Novo post
-        </a>
+        <div class="flex items-center gap-2">
+          <!-- Import Markdown button -->
+          <label class="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg text-sm text-zinc-300 cursor-pointer transition-colors">
+            📥 Importar .md
+            <input type="file" accept=".md,.markdown,text/markdown" id="import-md" class="hidden" multiple />
+          </label>
+          <a href="/admin/posts/new" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors">
+            + Novo post
+          </a>
+        </div>
       </div>
 
       <!-- Status filter -->
-      <div class="flex gap-2 mb-6">
+      <div class="flex gap-2 mb-4">
         {[
           { value: 'all', label: `Todos (${allPosts.length})` },
           { value: 'published', label: `Publicados (${allPosts.filter(p => p.status === 'published').length})` },
@@ -50,22 +57,59 @@ const filtered = filter === 'all' ? allPosts : allPosts.filter((p) => p.status =
         ))}
       </div>
 
+      <!-- Bulk actions toolbar (hidden when nothing selected) -->
+      <div id="bulk-bar" class="hidden items-center gap-3 mb-4 px-4 py-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
+        <span id="bulk-count" class="text-sm text-indigo-300 font-medium">0 selecionados</span>
+        <div class="flex-1"></div>
+        <button id="btn-publish-sel" class="text-xs px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded-md transition-colors">
+          Publicar
+        </button>
+        <button id="btn-unpublish-sel" class="text-xs px-3 py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 rounded-md transition-colors">
+          Despublicar
+        </button>
+        <button id="btn-delete-sel" class="text-xs px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-md transition-colors">
+          Excluir
+        </button>
+        <button id="btn-deselect" class="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+          Limpar
+        </button>
+      </div>
+
+      <!-- Select all row -->
+      {filtered.length > 0 && (
+        <div class="flex items-center gap-3 px-4 py-2 mb-1 text-xs text-zinc-600">
+          <input type="checkbox" id="check-all" class="w-3.5 h-3.5 rounded border-zinc-600 bg-zinc-800 text-indigo-600 cursor-pointer" />
+          <label for="check-all" class="cursor-pointer hover:text-zinc-400 transition-colors">Selecionar todos</label>
+        </div>
+      )}
+
       <!-- Posts list -->
       {filtered.length === 0 ? (
         <div class="text-center py-16 text-zinc-600 bg-zinc-900 border border-zinc-800 rounded-xl">
           Nenhum post encontrado.
         </div>
       ) : (
-        <div class="space-y-2">
+        <div class="space-y-2" id="posts-list">
           {filtered.map((post) => {
             const tags = parseTags(post.tags);
             return (
-              <div class="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
+              <div class="post-row bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 flex items-center gap-3" data-id={post.id}>
+                <input
+                  type="checkbox"
+                  class="post-check w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 cursor-pointer shrink-0"
+                  data-id={post.id}
+                />
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2 mb-0.5">
                     <a href={`/admin/posts/${post.id}`} class="text-sm font-medium text-zinc-200 hover:text-zinc-100 truncate">
                       {post.title}
                     </a>
+                    {post.featured === 1 && (
+                      <span class="text-xs px-1.5 py-0.5 rounded font-medium shrink-0 bg-amber-500/10 text-amber-400">★ Destaque</span>
+                    )}
+                    {post.scheduledAt && post.status !== 'published' && (
+                      <span class="text-xs px-1.5 py-0.5 rounded font-medium shrink-0 bg-blue-500/10 text-blue-400">🕐 Agendado</span>
+                    )}
                     <span class={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${
                       post.status === 'published'
                         ? 'bg-green-500/10 text-green-400'
@@ -96,7 +140,120 @@ const filtered = filter === 'all' ? allPosts : allPosts.filter((p) => p.status =
           })}
         </div>
       )}
+
+      <!-- Import feedback -->
+      <div id="import-feedback" class="hidden mt-4 p-3 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-zinc-300"></div>
     </div>
   </div>
+
+  <script>
+    // ── Checkbox logic ──
+    const checkAll = document.getElementById('check-all') as HTMLInputElement;
+    const bulkBar = document.getElementById('bulk-bar')!;
+    const bulkCount = document.getElementById('bulk-count')!;
+
+    function getChecked(): string[] {
+      return Array.from(document.querySelectorAll<HTMLInputElement>('.post-check:checked')).map((el) => el.dataset.id!);
+    }
+
+    function updateBulkBar() {
+      const ids = getChecked();
+      if (ids.length > 0) {
+        bulkBar.classList.remove('hidden');
+        bulkBar.classList.add('flex');
+        bulkCount.textContent = `${ids.length} selecionado${ids.length !== 1 ? 's' : ''}`;
+      } else {
+        bulkBar.classList.add('hidden');
+        bulkBar.classList.remove('flex');
+      }
+    }
+
+    checkAll?.addEventListener('change', () => {
+      document.querySelectorAll<HTMLInputElement>('.post-check').forEach((cb) => {
+        cb.checked = checkAll.checked;
+      });
+      updateBulkBar();
+    });
+
+    document.querySelectorAll<HTMLInputElement>('.post-check').forEach((cb) => {
+      cb.addEventListener('change', () => {
+        updateBulkBar();
+        const all = document.querySelectorAll<HTMLInputElement>('.post-check');
+        if (checkAll) checkAll.checked = Array.from(all).every((c) => c.checked);
+      });
+    });
+
+    document.getElementById('btn-deselect')?.addEventListener('click', () => {
+      document.querySelectorAll<HTMLInputElement>('.post-check').forEach((cb) => { cb.checked = false; });
+      if (checkAll) checkAll.checked = false;
+      updateBulkBar();
+    });
+
+    // ── Bulk API call ──
+    async function bulkAction(action: string, ids: string[]) {
+      const res = await fetch('/api/admin/posts/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ids }),
+      });
+      return res.json() as Promise<{ ok?: boolean; error?: string }>;
+    }
+
+    document.getElementById('btn-delete-sel')?.addEventListener('click', async () => {
+      const ids = getChecked();
+      if (ids.length === 0) return;
+      if (!confirm(`Excluir ${ids.length} post(s)? Esta ação é irreversível.`)) return;
+      const data = await bulkAction('delete', ids);
+      if (data.ok) location.reload();
+      else alert(data.error ?? 'Erro');
+    });
+
+    document.getElementById('btn-publish-sel')?.addEventListener('click', async () => {
+      const ids = getChecked();
+      if (ids.length === 0) return;
+      const data = await bulkAction('publish', ids);
+      if (data.ok) location.reload();
+      else alert(data.error ?? 'Erro');
+    });
+
+    document.getElementById('btn-unpublish-sel')?.addEventListener('click', async () => {
+      const ids = getChecked();
+      if (ids.length === 0) return;
+      const data = await bulkAction('unpublish', ids);
+      if (data.ok) location.reload();
+      else alert(data.error ?? 'Erro');
+    });
+
+    // ── Import Markdown ──
+    const importInput = document.getElementById('import-md') as HTMLInputElement;
+    const importFeedback = document.getElementById('import-feedback')!;
+
+    importInput?.addEventListener('change', async () => {
+      const files = Array.from(importInput.files ?? []);
+      if (files.length === 0) return;
+
+      importFeedback.textContent = `Importando ${files.length} arquivo(s)...`;
+      importFeedback.classList.remove('hidden');
+
+      const results: string[] = [];
+      for (const file of files) {
+        const markdown = await file.text();
+        const res = await fetch('/api/admin/posts/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'import', markdown, filename: file.name }),
+        });
+        const data = await res.json() as { ok?: boolean; title?: string; id?: string; error?: string };
+        if (data.ok) {
+          results.push(`✓ "${data.title}" importado como rascunho`);
+        } else {
+          results.push(`✗ ${file.name}: ${data.error ?? 'Erro'}`);
+        }
+      }
+
+      importFeedback.innerHTML = results.join('<br>') + '<br><a href="/admin/posts" class="text-indigo-400 hover:text-indigo-300 underline mt-2 inline-block">Atualizar lista →</a>';
+      importInput.value = '';
+    });
+  </script>
 </body>
 </html>

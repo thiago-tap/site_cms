@@ -47,6 +47,12 @@ export const sessions = sqliteTable('sessions', {
   expiresAt: integer('expires_at').notNull(),
 });
 
+export const postViewsLog = sqliteTable('post_views_log', {
+  postId: text('post_id').notNull(),
+  day: text('day').notNull(),      // YYYY-MM-DD
+  count: integer('count').notNull().default(0),
+});
+
 export const posts = sqliteTable('posts', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
@@ -63,4 +69,6 @@ export const posts = sqliteTable('posts', {
   publishedAt: integer('published_at'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
+  featured: integer('featured').notNull().default(0),      // 1 = pinned on homepage
+  scheduledAt: integer('scheduled_at'),                     // unix timestamp, publish at this time
 });
