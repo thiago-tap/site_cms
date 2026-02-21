@@ -1,0 +1,113 @@
+---
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import TrackingScripts from '../../components/TrackingScripts.astro';
+import { getDb, posts } from '../../lib/db';
+import { eq } from 'drizzle-orm';
+import '../../styles/global.css';
+
+const db = getDb(Astro.locals.runtime.env.DB);
+const allPosts = await db
+  .select({ tags: posts.tags })
+  .from(posts)
+  .where(eq(posts.status, 'published'))
+  .all();
+
+// Build tag → count map
+const tagMap = new Map<string, number>();
+for (const post of allPosts) {
+  try {
+    const tags = JSON.parse(post.tags) as string[];
+    for (const tag of tags) {
+      tagMap.set(tag, (tagMap.get(tag) ?? 0) + 1);
+    }
+  } catch {
+    // skip malformed
+  }
+}
+
+// Sort by count descending, then alphabetically
+const tagList = [...tagMap.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+
+const totalPosts = allPosts.length;
+---
+
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tags — Blog do Thiago</title>
+  <meta name="description" content="Explore todos os tópicos e categorias do blog." />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="alternate" type="application/rss+xml" title="Blog do Thiago RSS" href="/rss.xml" />
+  <TrackingScripts />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
+  <Header />
+
+  <main class="max-w-3xl mx-auto px-4 py-12 flex-1 w-full">
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-1.5 text-xs text-zinc-600 mb-8" aria-label="Breadcrumb">
+      <a href="/" class="hover:text-zinc-400 transition-colors">Blog</a>
+      <span>/</span>
+      <span class="text-zinc-400">Tags</span>
+    </nav>
+
+    <div class="mb-10">
+      <h1 class="text-4xl font-bold text-zinc-100 mb-2">Tags</h1>
+      <p class="text-zinc-400">{tagList.length} tópicos em {totalPosts} posts publicados.</p>
+    </div>
+
+    {tagList.length === 0 ? (
+      <p class="text-zinc-600">Nenhuma tag encontrada.</p>
+    ) : (
+      <div class="flex flex-wrap gap-3">
+        {tagList.map(([tag, count]) => {
+          // Scale font size based on count (min 0.75rem, max 1.25rem)
+          const max = tagList[0][1];
+          const min = tagList[tagList.length - 1][1];
+          const range = Math.max(1, max - min);
+          const ratio = (count - min) / range;
+          const size = 0.75 + ratio * 0.5; // 0.75rem – 1.25rem
+          return (
+            <a
+              href={`/?tag=${tag}`}
+              style={`font-size: ${size.toFixed(2)}rem`}
+              class="group flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 rounded-xl text-zinc-400 hover:text-indigo-400 transition-all"
+            >
+              <span class="font-medium">#{tag}</span>
+              <span class="text-[0.65rem] text-zinc-600 group-hover:text-zinc-500 font-mono leading-none">
+                {count}
+              </span>
+            </a>
+          );
+        })}
+      </div>
+    )}
+
+    <!-- Also show as table for quick scanning -->
+    {tagList.length > 0 && (
+      <div class="mt-16">
+        <h2 class="text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-4">Lista completa</h2>
+        <div class="divide-y divide-zinc-800">
+          {tagList.map(([tag, count]) => (
+            <a
+              href={`/?tag=${tag}`}
+              class="flex items-center justify-between py-3 group hover:bg-zinc-900/50 px-2 -mx-2 rounded transition-colors"
+            >
+              <span class="text-sm text-zinc-400 group-hover:text-indigo-400 transition-colors font-medium">
+                #{tag}
+              </span>
+              <span class="text-xs text-zinc-600 font-mono">
+                {count} {count === 1 ? 'post' : 'posts'}
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+  </main>
+
+  <Footer />
+</body>
+</html>

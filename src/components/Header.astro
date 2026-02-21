@@ -24,12 +24,16 @@ const logoUrl = config?.logo_url ?? '';
 
     <nav class="flex items-center gap-4">
       <a href="/" class={`text-sm transition-colors ${path === '/' ? 'text-zinc-100' : 'text-zinc-400 hover:text-zinc-100'}`}>Blog</a>
+      <a href="/tags" class={`text-sm transition-colors ${path === '/tags' ? 'text-zinc-100' : 'text-zinc-400 hover:text-zinc-100'}`}>Tags</a>
       <a href="/sobre" class={`text-sm transition-colors ${path === '/sobre' ? 'text-zinc-100' : 'text-zinc-400 hover:text-zinc-100'}`}>Sobre</a>
       <a href="/contato" class={`text-sm transition-colors ${path === '/contato' ? 'text-zinc-100' : 'text-zinc-400 hover:text-zinc-100'}`}>Contato</a>
-      <a href="/busca" title="Buscar" class="text-zinc-400 hover:text-zinc-100 transition-colors">
+      <a href="/busca" title="Buscar (Ctrl+K)" class="flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 transition-colors">
         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
         </svg>
+        <kbd class="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono bg-zinc-800 border border-zinc-700 text-zinc-500 rounded">
+          <span class="text-[11px]">⌘</span>K
+        </kbd>
       </a>
       {user ? (
         <>
@@ -47,3 +51,12 @@ const logoUrl = config?.logo_url ?? '';
     </nav>
   </div>
 </header>
+
+<script>
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      window.location.href = '/busca';
+    }
+  });
+</script>

@@ -102,144 +102,167 @@ const seriesPosts = post.series
 
   <Header />
 
-  <main class="max-w-3xl mx-auto px-4 py-12 flex-1 w-full">
-    <!-- Breadcrumbs -->
-    <nav class="flex items-center gap-1.5 text-xs text-zinc-600 mb-6" aria-label="Breadcrumb">
-      <a href="/" class="hover:text-zinc-400 transition-colors">Blog do Thiago</a>
-      <span>/</span>
-      <a href="/" class="hover:text-zinc-400 transition-colors">Blog</a>
-      <span>/</span>
-      <span class="text-zinc-400 truncate max-w-xs">{post.title}</span>
-    </nav>
+  <main class="flex-1 w-full px-4 py-12">
+    <!-- Top section: full width constrained -->
+    <div class="max-w-3xl mx-auto">
+      <!-- Breadcrumbs -->
+      <nav class="flex items-center gap-1.5 text-xs text-zinc-600 mb-6" aria-label="Breadcrumb">
+        <a href="/" class="hover:text-zinc-400 transition-colors">Blog do Thiago</a>
+        <span>/</span>
+        <a href="/" class="hover:text-zinc-400 transition-colors">Blog</a>
+        <span>/</span>
+        <span class="text-zinc-400 truncate max-w-xs">{post.title}</span>
+      </nav>
 
-    {post.coverImage && (
-      <img
-        src={imgProxy(post.coverImage, 1344)!}
-        alt={post.title}
-        width="1344"
-        height="756"
-        fetchpriority="high"
-        decoding="async"
-        class="w-full rounded-xl mb-8 aspect-video object-cover cursor-zoom-in prose-img"
-        data-zoomable
-        data-full={post.coverImage}
-      />
-    )}
+      {post.coverImage && (
+        <img
+          src={imgProxy(post.coverImage, 1344)!}
+          alt={post.title}
+          width="1344"
+          height="896"
+          fetchpriority="high"
+          decoding="async"
+          class="w-full rounded-xl mb-8 aspect-[3/2] object-cover cursor-zoom-in prose-img"
+          data-zoomable
+          data-full={post.coverImage}
+        />
+      )}
 
-    <header class="mb-8">
-      {tags.length > 0 && (
-        <div class="flex flex-wrap gap-1.5 mb-4">
-          {tags.map((tag) => (
-            <a href={`/?tag=${tag}`} class="text-xs bg-zinc-800 text-zinc-400 hover:text-zinc-200 px-2 py-0.5 rounded-md transition-colors">
-              #{tag}
-            </a>
-          ))}
+      <header class="mb-8">
+        {tags.length > 0 && (
+          <div class="flex flex-wrap gap-1.5 mb-4">
+            {tags.map((tag) => (
+              <a href={`/?tag=${tag}`} class="text-xs bg-zinc-800 text-zinc-400 hover:text-zinc-200 px-2 py-0.5 rounded-md transition-colors">
+                #{tag}
+              </a>
+            ))}
+          </div>
+        )}
+        <h1 class="text-3xl font-bold text-zinc-100 mb-4 leading-tight">{post.title}</h1>
+        <div class="flex items-center gap-4 text-sm text-zinc-500">
+          {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
+          <span>{post.readingTime} min de leitura</span>
+          <span class="flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+            {post.views + 1}
+          </span>
+        </div>
+      </header>
+
+      <!-- Series navigation -->
+      {post.series && seriesPosts.length > 1 && (
+        <SeriesNav series={post.series} posts={seriesPosts} currentId={post.id} />
+      )}
+
+      <!-- AI Summary -->
+      {post.aiSummary && (
+        <div class="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-5 mb-8">
+          <div class="flex items-center gap-2 text-indigo-400 text-sm font-medium mb-2">
+            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+            </svg>
+            Resumo gerado por IA
+          </div>
+          <p class="text-sm text-zinc-300 leading-relaxed">{post.aiSummary}</p>
         </div>
       )}
-      <h1 class="text-3xl font-bold text-zinc-100 mb-4 leading-tight">{post.title}</h1>
-      <div class="flex items-center gap-4 text-sm text-zinc-500">
-        {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
-        <span>{post.readingTime} min de leitura</span>
-        <span class="flex items-center gap-1">
-          <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-          </svg>
-          {post.views + 1}
-        </span>
-      </div>
-    </header>
-
-    <!-- Series navigation -->
-    {post.series && seriesPosts.length > 1 && (
-      <SeriesNav series={post.series} posts={seriesPosts} currentId={post.id} />
-    )}
-
-    <!-- AI Summary -->
-    {post.aiSummary && (
-      <div class="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-5 mb-8">
-        <div class="flex items-center gap-2 text-indigo-400 text-sm font-medium mb-2">
-          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
-          </svg>
-          Resumo gerado por IA
-        </div>
-        <p class="text-sm text-zinc-300 leading-relaxed">{post.aiSummary}</p>
-      </div>
-    )}
-
-    <!-- Table of Contents -->
-    <TOC headings={headings} />
-
-    <!-- Content -->
-    <div class="prose" id="post-content">
-      <Fragment set:html={html} />
     </div>
 
-    <!-- Share -->
-    <ShareButtons url={postUrl} title={post.title} />
+    <!-- Content section: 2-column on xl (content + sticky TOC sidebar) -->
+    <div class="max-w-[1180px] mx-auto">
+      <div class="xl:flex xl:flex-row-reverse xl:gap-12 xl:items-start">
 
-    <!-- Author card -->
-    {(config.author_name || config.author_avatar) && (
-      <div class="mt-8 p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center gap-4 not-prose">
-        {config.author_avatar && (
-          <img src={config.author_avatar} alt={config.author_name ?? 'Autor'} class="w-12 h-12 rounded-full object-cover shrink-0 border border-zinc-700" />
+        <!-- Sticky TOC sidebar (desktop only) -->
+        {headings.length > 1 && (
+          <aside class="hidden xl:block xl:w-56 xl:shrink-0">
+            <div class="sticky top-24 bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+              <TOC headings={headings} variant="sidebar" />
+            </div>
+          </aside>
         )}
-        <div class="flex-1 min-w-0">
-          <p class="font-medium text-zinc-100 text-sm">{config.author_name}</p>
-          {config.author_bio && (
-            <p class="text-xs text-zinc-400 mt-0.5 line-clamp-2">{config.author_bio}</p>
+
+        <!-- Main content column -->
+        <div class="xl:flex-1 xl:min-w-0 max-w-3xl mx-auto xl:mx-0">
+          <!-- TOC inline (mobile/tablet only) -->
+          <div class="xl:hidden">
+            <TOC headings={headings} />
+          </div>
+
+          <!-- Content -->
+          <div class="prose" id="post-content">
+            <Fragment set:html={html} />
+          </div>
+
+          <!-- Share -->
+          <ShareButtons url={postUrl} title={post.title} />
+
+          <!-- Author card -->
+          {(config.author_name || config.author_avatar) && (
+            <div class="mt-8 p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center gap-4 not-prose">
+              {config.author_avatar && (
+                <img src={config.author_avatar} alt={config.author_name ?? 'Autor'} class="w-12 h-12 rounded-full object-cover shrink-0 border border-zinc-700" />
+              )}
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-zinc-100 text-sm">{config.author_name}</p>
+                {config.author_bio && (
+                  <p class="text-xs text-zinc-400 mt-0.5 line-clamp-2">{config.author_bio}</p>
+                )}
+              </div>
+              <a href="/sobre" class="shrink-0 text-xs px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded-lg transition-colors">
+                Ver perfil
+              </a>
+            </div>
           )}
-        </div>
-        <a href="/sobre" class="shrink-0 text-xs px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded-lg transition-colors">
-          Ver perfil
-        </a>
-      </div>
-    )}
 
-    <!-- Edit link -->
-    {Astro.locals.user && (
-      <div class="mt-6 pt-6 border-t border-zinc-800">
-        <a href={`/admin/posts/${post.id}`} class="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
-          ✏️ Editar este post
-        </a>
-      </div>
-    )}
-
-    <!-- Newsletter -->
-    <NewsletterForm enabled={config.newsletter_enabled === '1'} />
-
-    <!-- Giscus comments -->
-    <GiscusComments
-      repo={config.giscus_repo}
-      repoId={config.giscus_repo_id}
-      category={config.giscus_category}
-      categoryId={config.giscus_category_id}
-    />
-
-    <!-- Related posts -->
-    <RelatedPosts posts={related} />
-
-    <!-- Prev / Next navigation -->
-    {(prevPost || nextPost) && (
-      <nav class="mt-12 pt-8 border-t border-zinc-800 grid grid-cols-2 gap-4 not-prose">
-        <div>
-          {prevPost && (
-            <a href={`/blog/${prevPost.slug}`} class="group flex flex-col gap-1 p-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-xl transition-colors">
-              <span class="text-xs text-zinc-600">← Anterior</span>
-              <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 line-clamp-2 transition-colors">{prevPost.title}</span>
-            </a>
+          <!-- Edit link -->
+          {Astro.locals.user && (
+            <div class="mt-6 pt-6 border-t border-zinc-800">
+              <a href={`/admin/posts/${post.id}`} class="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+                ✏️ Editar este post
+              </a>
+            </div>
           )}
-        </div>
-        <div class="text-right">
-          {nextPost && (
-            <a href={`/blog/${nextPost.slug}`} class="group flex flex-col gap-1 p-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-xl transition-colors">
-              <span class="text-xs text-zinc-600">Próximo →</span>
-              <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 line-clamp-2 transition-colors">{nextPost.title}</span>
-            </a>
+
+          <!-- Newsletter -->
+          <NewsletterForm enabled={config.newsletter_enabled === '1'} />
+
+          <!-- Giscus comments -->
+          <GiscusComments
+            repo={config.giscus_repo}
+            repoId={config.giscus_repo_id}
+            category={config.giscus_category}
+            categoryId={config.giscus_category_id}
+          />
+
+          <!-- Related posts -->
+          <RelatedPosts posts={related} />
+
+          <!-- Prev / Next navigation -->
+          {(prevPost || nextPost) && (
+            <nav class="mt-12 pt-8 border-t border-zinc-800 grid grid-cols-2 gap-4 not-prose">
+              <div>
+                {prevPost && (
+                  <a href={`/blog/${prevPost.slug}`} class="group flex flex-col gap-1 p-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-xl transition-colors">
+                    <span class="text-xs text-zinc-600">← Anterior</span>
+                    <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 line-clamp-2 transition-colors">{prevPost.title}</span>
+                  </a>
+                )}
+              </div>
+              <div class="text-right">
+                {nextPost && (
+                  <a href={`/blog/${nextPost.slug}`} class="group flex flex-col gap-1 p-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-xl transition-colors">
+                    <span class="text-xs text-zinc-600">Próximo →</span>
+                    <span class="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 line-clamp-2 transition-colors">{nextPost.title}</span>
+                  </a>
+                )}
+              </div>
+            </nav>
           )}
-        </div>
-      </nav>
-    )}
+        </div> <!-- end xl:flex-1 main column -->
+      </div> <!-- end xl:flex row -->
+    </div> <!-- end max-w-[1180px] -->
   </main>
 
   <!-- Back to top button -->

@@ -25,12 +25,12 @@ const coverSrc = imgProxy(post.coverImage, 800);
 <a href={`/blog/${post.slug}`} class="group block h-full">
   <article class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-indigo-500/40 transition-all h-full flex flex-col">
     {coverSrc && (
-      <div class="aspect-video overflow-hidden bg-zinc-800 shrink-0">
+      <div class="aspect-[3/2] overflow-hidden bg-zinc-800 shrink-0">
         <img
           src={coverSrc}
           alt={post.title}
           width="800"
-          height="450"
+          height="533"
           loading={priority ? 'eager' : 'lazy'}
           fetchpriority={priority ? 'high' : 'auto'}
           decoding="async"

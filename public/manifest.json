@@ -1,0 +1,19 @@
+{
+  "name": "Blog do Thiago",
+  "short_name": "Blog",
+  "description": "Artigos sobre desenvolvimento de software, dados e tecnologia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "lang": "pt-BR",
+  "categories": ["technology", "education"]
+}

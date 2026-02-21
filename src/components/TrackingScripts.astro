@@ -17,6 +17,17 @@ try {
 }
 ---
 
+<!-- PWA manifest + service worker registration -->
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#09090b" />
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+</script>
+
 {gaId && (
   <>
     <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}></script>

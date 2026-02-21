@@ -12,23 +12,49 @@ const enabled = !!(repo && repoId && category && categoryId);
 {enabled && (
   <div class="mt-14 pt-8 border-t border-zinc-800 not-prose">
     <h2 class="text-lg font-semibold text-zinc-200 mb-5">Comentários</h2>
-    <Fragment set:html={`
-      <div class="giscus"></div>
-      <script src="https://giscus.app/client.js"
-        data-repo="${repo}"
-        data-repo-id="${repoId}"
-        data-category="${category}"
-        data-category-id="${categoryId}"
-        data-mapping="pathname"
-        data-strict="0"
-        data-reactions-enabled="1"
-        data-emit-metadata="0"
-        data-input-position="bottom"
-        data-theme="dark"
-        data-lang="pt"
-        crossorigin="anonymous"
-        async>
-      </script>
-    `} />
+    <div
+      id="giscus-container"
+      data-repo={repo}
+      data-repo-id={repoId}
+      data-category={category}
+      data-category-id={categoryId}
+      class="min-h-[80px] flex items-center justify-center"
+    >
+      <p class="text-sm text-zinc-600">Carregando comentários...</p>
+    </div>
   </div>
 )}
+
+<script>
+  const container = document.getElementById('giscus-container');
+  if (container) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0].isIntersecting) return;
+        observer.disconnect();
+
+        const { repo, repoId, category, categoryId } = container.dataset;
+        container.innerHTML = '<div class="giscus"></div>';
+
+        const script = document.createElement('script');
+        script.src = 'https://giscus.app/client.js';
+        script.setAttribute('data-repo', repo!);
+        script.setAttribute('data-repo-id', repoId!);
+        script.setAttribute('data-category', category!);
+        script.setAttribute('data-category-id', categoryId!);
+        script.setAttribute('data-mapping', 'pathname');
+        script.setAttribute('data-strict', '0');
+        script.setAttribute('data-reactions-enabled', '1');
+        script.setAttribute('data-emit-metadata', '0');
+        script.setAttribute('data-input-position', 'bottom');
+        script.setAttribute('data-theme', 'dark');
+        script.setAttribute('data-lang', 'pt');
+        script.setAttribute('crossorigin', 'anonymous');
+        script.async = true;
+        container.appendChild(script);
+      },
+      { rootMargin: '300px' }
+    );
+    observer.observe(container);
+  }
+</script>
