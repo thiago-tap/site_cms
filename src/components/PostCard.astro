@@ -1,5 +1,5 @@
 ---
-import { formatDate, parseTags } from '../lib/utils';
+import { formatDate, parseTags, imgProxy } from '../lib/utils';
 
 interface Props {
   post: {
@@ -13,20 +13,27 @@ interface Props {
     readingTime: number;
     publishedAt: number | null;
   };
+  /** Pass true for above-the-fold cards (first 2) to skip lazy loading and boost LCP */
+  priority?: boolean;
 }
 
-const { post } = Astro.props;
+const { post, priority = false } = Astro.props;
 const tags = parseTags(post.tags);
+const coverSrc = imgProxy(post.coverImage, 800);
 ---
 
 <a href={`/blog/${post.slug}`} class="group block h-full">
   <article class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-indigo-500/40 transition-all h-full flex flex-col">
-    {post.coverImage && (
+    {coverSrc && (
       <div class="aspect-video overflow-hidden bg-zinc-800 shrink-0">
         <img
-          src={post.coverImage}
+          src={coverSrc}
           alt={post.title}
-          loading="lazy"
+          width="800"
+          height="450"
+          loading={priority ? 'eager' : 'lazy'}
+          fetchpriority={priority ? 'high' : 'auto'}
+          decoding="async"
           class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
       </div>

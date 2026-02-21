@@ -14,7 +14,7 @@ import TrackingScripts from '../../components/TrackingScripts.astro';
 import { renderMarkdown, extractHeadings, hasTwitterEmbed } from '../../lib/markdown';
 import { getRelatedPosts } from '../../lib/embeddings';
 import { getSettings } from '../../lib/settings';
-import { formatDate, parseTags } from '../../lib/utils';
+import { formatDate, parseTags, imgProxy } from '../../lib/utils';
 import '../../styles/global.css';
 
 const { slug } = Astro.params;
@@ -114,10 +114,15 @@ const seriesPosts = post.series
 
     {post.coverImage && (
       <img
-        src={post.coverImage}
+        src={imgProxy(post.coverImage, 1344)!}
         alt={post.title}
+        width="1344"
+        height="756"
+        fetchpriority="high"
+        decoding="async"
         class="w-full rounded-xl mb-8 aspect-video object-cover cursor-zoom-in prose-img"
         data-zoomable
+        data-full={post.coverImage}
       />
     )}
 
@@ -274,8 +279,10 @@ const seriesPosts = post.series
     document.querySelectorAll('.prose img, [data-zoomable]').forEach((img) => {
       (img as HTMLElement).style.cursor = 'zoom-in';
       img.addEventListener('click', () => {
-        lightboxImg.src = (img as HTMLImageElement).src;
-        lightboxImg.alt = (img as HTMLImageElement).alt;
+        // Use original URL (data-full) for lightbox when available, for best quality
+        const el = img as HTMLImageElement;
+        lightboxImg.src = el.dataset.full ?? el.src;
+        lightboxImg.alt = el.alt;
         lightbox.style.display = 'flex';
         document.body.style.overflow = 'hidden';
       });

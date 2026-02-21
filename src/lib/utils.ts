@@ -40,3 +40,13 @@ export function calcReadingTime(content: string): number {
   const words = content.trim().split(/\s+/).length;
   return Math.max(1, Math.ceil(words / 200));
 }
+
+/**
+ * Returns an image URL routed through the /api/img proxy.
+ * This allows Cloudflare to cache the image at the edge and (on Pro plan) convert to WebP + resize.
+ * On the Free plan, CF Polish can still convert to WebP once cached at the edge.
+ */
+export function imgProxy(src: string | null | undefined, width: number): string | null {
+  if (!src) return null;
+  return `/api/img?src=${encodeURIComponent(src)}&w=${width}`;
+}
