@@ -53,6 +53,8 @@ if (!Astro.locals.user) return Astro.redirect('/login');
 
   <!-- Media picker mode (when opened in modal via postMessage) -->
   <script>
+    import { toWebP } from '../../../scripts/imgConvert';
+
     const isPickerMode = window.parent !== window;
 
     async function loadMedia() {
@@ -155,14 +157,16 @@ if (!Astro.locals.user) return Astro.redirect('/login');
       status.classList.remove('hidden');
 
       for (const file of Array.from(files)) {
-        status.textContent = `Enviando ${file.name}...`;
-        const fd = new FormData();
-        fd.append('file', file);
         try {
+          status.textContent = `Convertendo ${file.name}...`;
+          const converted = await toWebP(file);
+          status.textContent = `Enviando ${converted.name}...`;
+          const fd = new FormData();
+          fd.append('file', converted);
           const res = await fetch('/api/upload', { method: 'POST', body: fd });
           const data = await res.json() as { ok?: boolean; url?: string; error?: string };
           if (data.ok && data.url) {
-            status.textContent = `✓ ${file.name} enviado`;
+            status.textContent = `✓ ${converted.name} enviado`;
           } else {
             status.textContent = `✗ ${data.error ?? 'Erro'}`;
           }

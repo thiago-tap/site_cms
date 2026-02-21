@@ -231,6 +231,8 @@ if (Astro.request.method === 'POST') {
   </div>
 
   <script>
+    import { toWebP } from '../../../scripts/imgConvert';
+
     const contentEl = document.getElementById('content') as HTMLTextAreaElement;
     const tagsEl = document.getElementById('tags') as HTMLInputElement;
     const metaEl = document.getElementById('meta_description') as HTMLInputElement;
@@ -372,12 +374,13 @@ if (Astro.request.method === 'POST') {
       else { coverPreview.classList.add('hidden'); }
     });
 
-    // Cover image upload
+    // Cover image upload (converts to WebP before sending)
     coverUpload?.addEventListener('change', async () => {
       const file = coverUpload.files?.[0];
       if (!file) return;
+      const converted = await toWebP(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', converted);
       try {
         const res = await fetch('/api/upload', { method: 'POST', body: formData });
         const json = await res.json() as { url?: string; error?: string };

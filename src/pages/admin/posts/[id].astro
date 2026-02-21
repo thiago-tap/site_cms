@@ -331,6 +331,8 @@ const tags = parseTags(post.tags).join(', ');
   </div>
 
   <script>
+    import { toWebP } from '../../../scripts/imgConvert';
+
     const contentEl = document.getElementById('content') as HTMLTextAreaElement;
     const tagsEl = document.getElementById('tags') as HTMLInputElement;
     const metaEl = document.getElementById('meta_description') as HTMLInputElement;
@@ -462,11 +464,13 @@ const tags = parseTags(post.tags).join(', ');
       else { coverPreview.classList.add('hidden'); }
     });
 
+    // Cover image upload (converts to WebP before sending)
     coverUpload?.addEventListener('change', async () => {
       const file = coverUpload.files?.[0];
       if (!file) return;
+      const converted = await toWebP(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', converted);
       try {
         const res = await fetch('/api/upload', { method: 'POST', body: formData });
         const json = await res.json() as { url?: string; error?: string };
