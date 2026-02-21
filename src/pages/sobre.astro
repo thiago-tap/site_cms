@@ -12,6 +12,64 @@ const db = getDb(Astro.locals.runtime.env.DB);
 const config = await getSettings(Astro.locals.runtime.env.DB);
 const page = await db.select().from(pages).where(eq(pages.slug, 'sobre')).get();
 const html = page ? renderMarkdown(page.content) : '';
+
+const skills: Record<string, string[]> = {
+  'Backend':      ['Java', 'Quarkus', 'PHP', 'Laravel', 'Node.js', 'API REST'],
+  'Frontend':     ['Angular', 'TypeScript', 'JavaScript', 'HTML5', 'CSS3', 'Bootstrap', 'Tailwind CSS'],
+  'DevOps & Infra': ['Docker', 'Docker Swarm', 'Traefik', 'MinIO', 'Linux'],
+  'Banco de dados': ['MySQL', 'PostgreSQL', 'SQL'],
+  'Ferramentas':  ['Git', 'n8n', 'Astro', 'Cloudflare'],
+};
+
+const experience = [
+  {
+    company: 'Minsait / Indra',
+    role: 'Desenvolvedor Full Stack',
+    period: '2022 — atual',
+    location: 'Brasília, DF',
+    current: true,
+    description: 'Projetos estratégicos para o Banco do Brasil. Desenvolvimento e manutenção de APIs críticas com Java e Quarkus, modernização de sistemas financeiros de grande escala e frontend com Angular.',
+    tags: ['Java', 'Quarkus', 'Angular', 'API REST'],
+  },
+  {
+    company: 'Tent Agência Digital',
+    role: 'Analista de Sistema',
+    period: 'Jul 2020 — Out 2023',
+    location: 'Brasília, DF',
+    current: false,
+    description: 'Análise e levantamento de requisitos para soluções digitais, acompanhamento de projetos e suporte técnico especializado.',
+    tags: ['Análise de Sistemas', 'Levantamento de Requisitos'],
+  },
+  {
+    company: 'Caelum / E Technology',
+    role: 'Desenvolvedor Java',
+    period: 'Brasília, DF',
+    location: 'Brasília, DF',
+    current: false,
+    description: 'Desenvolvimento de aplicações Java corporativas com foco em qualidade de código e boas práticas.',
+    tags: ['Java', 'Desenvolvimento Web'],
+  },
+];
+
+const education = [
+  {
+    institution: 'Faculdade INSS',
+    degree: 'Pós-graduação (lato sensu)',
+    field: 'Desenvolvimento Web',
+    period: 'Jan 2025 — Jul 2025',
+  },
+  {
+    institution: 'Faculdade INSS',
+    degree: 'Pós-graduação (lato sensu)',
+    field: 'Segurança da Informação',
+    period: '2023',
+  },
+];
+
+const certs = [
+  { name: 'Desenvolvimento Web com Quarkus', issuer: 'Udemy', year: '2023' },
+  { name: 'Formação Angular 13 — Integração com API Restful Java/Spring', issuer: 'Udemy', year: '2023' },
+];
 ---
 
 <html lang="pt-BR">
@@ -31,53 +89,219 @@ const html = page ? renderMarkdown(page.content) : '';
   <Header />
 
   <main class="max-w-3xl mx-auto px-4 py-12 flex-1 w-full">
-    <a href="/" class="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors mb-8">
-      ← Blog
+
+    <!-- Breadcrumb -->
+    <a href="/" class="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors mb-10">
+      <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Blog
     </a>
 
-    {config.author_avatar && (
-      <img
-        src={config.author_avatar}
-        alt={config.author_name || 'Autor'}
-        class="w-24 h-24 rounded-full mb-6 border-2 border-zinc-800"
-      />
+    <!-- ── Hero ── -->
+    <section class="flex flex-col sm:flex-row items-start gap-7 mb-14">
+      {config.author_avatar ? (
+        <div class="relative shrink-0">
+          <div class="absolute -inset-1 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 opacity-30 blur-md"></div>
+          <img
+            src={config.author_avatar}
+            alt={config.author_name || 'Thiago'}
+            class="relative w-28 h-28 rounded-full object-cover ring-2 ring-zinc-800"
+          />
+          <span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-zinc-950" title="Disponível"></span>
+        </div>
+      ) : (
+        <div class="shrink-0 w-28 h-28 rounded-full bg-zinc-800 flex items-center justify-center text-4xl ring-2 ring-zinc-700">👨‍💻</div>
+      )}
+
+      <div class="flex-1 min-w-0">
+        <h1 class="text-3xl font-bold text-zinc-100 mb-1">
+          {config.author_name || 'Thiago Albuquerque de Paula'}
+        </h1>
+        <p class="text-indigo-400 font-medium mb-3 text-sm leading-relaxed">
+          Desenvolvedor Full Stack · Java · Quarkus · PHP · Laravel · Angular
+        </p>
+        <div class="flex items-center gap-1.5 text-sm text-zinc-500 mb-5">
+          <svg class="w-3.5 h-3.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          Brasília, Brasil
+        </div>
+
+        <!-- Social links -->
+        <div class="flex flex-wrap gap-2">
+          {config.social_github && (
+            <a href={`https://github.com/${config.social_github}`} target="_blank" rel="noopener"
+              class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-zinc-300 rounded-lg transition-colors">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.605-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
+              GitHub
+            </a>
+          )}
+          {config.social_linkedin && (
+            <a href={`https://linkedin.com/in/${config.social_linkedin}`} target="_blank" rel="noopener"
+              class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-zinc-300 rounded-lg transition-colors">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+              LinkedIn
+            </a>
+          )}
+          {config.social_twitter && (
+            <a href={`https://twitter.com/${config.social_twitter}`} target="_blank" rel="noopener"
+              class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-zinc-300 rounded-lg transition-colors">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.736-8.857L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+              Twitter/X
+            </a>
+          )}
+          {config.social_instagram && (
+            <a href={`https://instagram.com/${config.social_instagram}`} target="_blank" rel="noopener"
+              class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 text-zinc-300 rounded-lg transition-colors">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+              Instagram
+            </a>
+          )}
+          <a href="mailto:thiago@catiteo.com"
+            class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 hover:border-indigo-500/50 text-indigo-400 rounded-lg transition-colors">
+            <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+            </svg>
+            thiago@catiteo.com
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Sobre mim (CMS) ── -->
+    {html && (
+      <section class="mb-14">
+        <h2 class="flex items-center gap-2 text-xl font-semibold text-zinc-100 mb-5">
+          <span class="text-indigo-400 font-mono text-base">//</span> Sobre mim
+        </h2>
+        <div class="prose">
+          <Fragment set:html={html} />
+        </div>
+      </section>
     )}
 
-    {config.author_name && (
-      <h1 class="text-3xl font-bold text-zinc-100 mb-2">{config.author_name}</h1>
-    )}
+    <!-- ── Tecnologias ── -->
+    <section class="mb-14">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-zinc-100 mb-6">
+        <span class="text-indigo-400 font-mono text-base">//</span> Tecnologias
+      </h2>
+      <div class="space-y-4">
+        {Object.entries(skills).map(([category, list]) => (
+          <div>
+            <p class="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">{category}</p>
+            <div class="flex flex-wrap gap-2">
+              {list.map((skill) => (
+                <span class="px-3 py-1 bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm rounded-full hover:border-indigo-500/40 hover:text-indigo-300 transition-colors">
+                  {skill}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
 
-    <!-- Social links -->
-    <div class="flex flex-wrap gap-3 mb-10">
-      {config.social_github && (
-        <a href={`https://github.com/${config.social_github}`} target="_blank" rel="noopener"
-          class="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">
-          GitHub
-        </a>
-      )}
-      {config.social_twitter && (
-        <a href={`https://twitter.com/${config.social_twitter}`} target="_blank" rel="noopener"
-          class="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">
-          Twitter/X
-        </a>
-      )}
-      {config.social_linkedin && (
-        <a href={`https://linkedin.com/in/${config.social_linkedin}`} target="_blank" rel="noopener"
-          class="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">
-          LinkedIn
-        </a>
-      )}
-      {config.social_instagram && (
-        <a href={`https://instagram.com/${config.social_instagram}`} target="_blank" rel="noopener"
-          class="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">
-          Instagram
-        </a>
-      )}
-    </div>
+    <!-- ── Experiência ── -->
+    <section class="mb-14">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-zinc-100 mb-6">
+        <span class="text-indigo-400 font-mono text-base">//</span> Experiência
+      </h2>
+      <div class="relative space-y-0">
+        {experience.map((job, i) => (
+          <div class="relative flex gap-5 pb-8 last:pb-0">
+            <!-- Timeline line -->
+            {i < experience.length - 1 && (
+              <div class="absolute left-[17px] top-8 bottom-0 w-px bg-zinc-800"></div>
+            )}
+            <!-- Dot -->
+            <div class={`mt-1 w-9 h-9 rounded-full flex items-center justify-center shrink-0 ring-2 ${job.current ? 'bg-indigo-500/15 ring-indigo-500/40' : 'bg-zinc-900 ring-zinc-800'}`}>
+              <div class={`w-2.5 h-2.5 rounded-full ${job.current ? 'bg-indigo-400' : 'bg-zinc-600'}`}></div>
+            </div>
+            <!-- Content -->
+            <div class="flex-1 min-w-0 pt-0.5">
+              <div class="flex flex-wrap items-start justify-between gap-2 mb-1">
+                <div>
+                  <h3 class="font-semibold text-zinc-100 text-base">{job.role}</h3>
+                  <p class="text-sm text-indigo-400">{job.company}</p>
+                </div>
+                <div class="text-right shrink-0">
+                  <span class={`text-xs px-2 py-0.5 rounded-full ${job.current ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'text-zinc-500'}`}>
+                    {job.period}
+                  </span>
+                  <p class="text-xs text-zinc-600 mt-1">{job.location}</p>
+                </div>
+              </div>
+              <p class="text-sm text-zinc-400 leading-relaxed mb-2">{job.description}</p>
+              <div class="flex flex-wrap gap-1.5">
+                {job.tags.map((tag) => (
+                  <span class="text-xs px-2 py-0.5 bg-zinc-800 text-zinc-500 rounded">{tag}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
 
-    <div class="prose">
-      <Fragment set:html={html} />
-    </div>
+    <!-- ── Formação ── -->
+    <section class="mb-14">
+      <h2 class="flex items-center gap-2 text-xl font-semibold text-zinc-100 mb-6">
+        <span class="text-indigo-400 font-mono text-base">//</span> Formação
+      </h2>
+      <div class="space-y-3">
+        {education.map((edu) => (
+          <div class="flex items-start gap-4 p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors">
+            <div class="w-9 h-9 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+              <svg class="w-4 h-4 text-indigo-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-zinc-100 text-sm">{edu.field}</p>
+              <p class="text-sm text-zinc-400">{edu.degree} · {edu.institution}</p>
+            </div>
+            <span class="text-xs text-zinc-600 shrink-0">{edu.period}</span>
+          </div>
+        ))}
+
+        <!-- Certificados -->
+        <p class="text-xs font-medium text-zinc-500 uppercase tracking-wider mt-5 mb-2">Certificados</p>
+        {certs.map((cert) => (
+          <div class="flex items-start gap-4 p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors">
+            <div class="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0 text-base">
+              🎓
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-zinc-100 text-sm">{cert.name}</p>
+              <p class="text-sm text-zinc-500">{cert.issuer}</p>
+            </div>
+            <span class="text-xs text-zinc-600 shrink-0">{cert.year}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- ── CTA ── -->
+    <section class="rounded-xl bg-gradient-to-br from-indigo-500/5 to-purple-500/5 border border-indigo-500/20 p-6 text-center">
+      <p class="text-zinc-300 font-medium mb-1">Vamos conversar?</p>
+      <p class="text-sm text-zinc-500 mb-5">Aberto a trocar ideias sobre Full Stack, DevOps e automação de processos.</p>
+      <div class="flex flex-wrap justify-center gap-3">
+        <a href="/contato"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors">
+          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+          </svg>
+          Entrar em contato
+        </a>
+        {config.social_github && (
+          <a href={`https://github.com/${config.social_github}`} target="_blank" rel="noopener"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-sm font-medium rounded-lg transition-colors">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.605-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
+            Ver GitHub
+          </a>
+        )}
+      </div>
+    </section>
+
   </main>
 
   <Footer />
