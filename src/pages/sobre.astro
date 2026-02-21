@@ -119,12 +119,15 @@ const certs = [
         <p class="text-indigo-400 font-medium mb-3 text-sm leading-relaxed">
           Desenvolvedor Full Stack · Java · Quarkus · PHP · Laravel · Angular
         </p>
-        <div class="flex items-center gap-1.5 text-sm text-zinc-500 mb-5">
+        <div class="flex items-center gap-1.5 text-sm text-zinc-500 mb-3">
           <svg class="w-3.5 h-3.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
           </svg>
           Brasília, Brasil
         </div>
+        {config.author_bio && (
+          <p class="text-sm text-zinc-400 leading-relaxed mb-5">{config.author_bio}</p>
+        )}
 
         <!-- Social links -->
         <div class="flex flex-wrap gap-2">

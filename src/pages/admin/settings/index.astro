@@ -95,8 +95,15 @@ const hintClass = 'text-xs text-zinc-600 mt-1';
 
           <div>
             <label for="logo_url" class={labelClass}>Logo (URL da imagem)</label>
-            <input id="logo_url" name="logo_url" type="url" value={config.logo_url} placeholder="https://..." class={inputClass} />
-            <p class={hintClass}>Deixe vazio para usar o ícone SVG padrão.</p>
+            <div class="flex gap-2">
+              <input id="logo_url" name="logo_url" type="url" value={config.logo_url} placeholder="https://..." class={inputClass + ' flex-1'} />
+              <button type="button" id="btn-logo"
+                class="shrink-0 px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-sm text-zinc-300 rounded-lg transition-colors whitespace-nowrap">
+                📤 Enviar
+              </button>
+              <input type="file" id="file-logo" accept="image/*,image/svg+xml" class="hidden" />
+            </div>
+            <p class={hintClass}>Altura ideal: 24–32 px · PNG transparente ou SVG recomendado · Deixe vazio para usar o ícone padrão.</p>
           </div>
         </section>
 
@@ -110,8 +117,24 @@ const hintClass = 'text-xs text-zinc-600 mt-1';
               <input id="author_name" name="author_name" type="text" value={config.author_name} class={inputClass} />
             </div>
             <div>
-              <label for="author_avatar" class={labelClass}>Avatar (URL)</label>
-              <input id="author_avatar" name="author_avatar" type="url" value={config.author_avatar} placeholder="https://..." class={inputClass} />
+              <label class={labelClass}>Avatar</label>
+              <div class="flex items-center gap-3">
+                {config.author_avatar
+                  ? <img id="avatar-preview" src={config.author_avatar} alt="Avatar" class="w-12 h-12 rounded-full object-cover bg-zinc-800 border border-zinc-700 shrink-0" />
+                  : <div id="avatar-preview" class="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 shrink-0 flex items-center justify-center text-xl">👤</div>
+                }
+                <div class="flex-1 min-w-0">
+                  <div class="flex gap-2">
+                    <input id="author_avatar" name="author_avatar" type="url" value={config.author_avatar} placeholder="https://..." class={inputClass + ' flex-1'} />
+                    <button type="button" id="btn-avatar"
+                      class="shrink-0 px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-sm text-zinc-300 rounded-lg transition-colors whitespace-nowrap">
+                      📤 Enviar
+                    </button>
+                    <input type="file" id="file-avatar" accept="image/*" class="hidden" />
+                  </div>
+                  <p class={hintClass}>400 × 400 px · formato quadrado · WebP/PNG/JPG</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -245,6 +268,59 @@ const hintClass = 'text-xs text-zinc-600 mt-1';
     const colorInput = document.getElementById('accent_color') as HTMLInputElement;
     const hexInput = document.getElementById('accent_color_hex') as HTMLInputElement;
     colorInput?.addEventListener('input', () => { hexInput.value = colorInput.value; });
+  </script>
+
+  <script>
+    import { toWebP } from '../../../scripts/imgConvert';
+
+    async function uploadImg(
+      file: File,
+      inputId: string,
+      previewId: string | null,
+      btnId: string,
+      convert: boolean,
+    ) {
+      const btn = document.getElementById(btnId) as HTMLButtonElement;
+      const input = document.getElementById(inputId) as HTMLInputElement;
+      const original = btn.textContent ?? '';
+      btn.textContent = 'Enviando...';
+      btn.disabled = true;
+      try {
+        const toUpload = convert ? await toWebP(file, 400) : file;
+        const fd = new FormData();
+        fd.append('file', toUpload);
+        const res = await fetch('/api/upload', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error('upload failed');
+        const { url } = await res.json() as { url: string };
+        input.value = url;
+        if (previewId) {
+          const el = document.getElementById(previewId) as HTMLImageElement | null;
+          if (el instanceof HTMLImageElement) { el.src = url; el.style.display = ''; }
+          else if (el) { el.style.display = 'none'; }
+        }
+      } catch {
+        alert('Erro ao enviar imagem. Verifique se o MinIO está configurado corretamente.');
+      } finally {
+        btn.textContent = original;
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('btn-avatar')?.addEventListener('click', () => {
+      document.getElementById('file-avatar')?.click();
+    });
+    (document.getElementById('file-avatar') as HTMLInputElement)?.addEventListener('change', (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) uploadImg(file, 'author_avatar', 'avatar-preview', 'btn-avatar', true);
+    });
+
+    document.getElementById('btn-logo')?.addEventListener('click', () => {
+      document.getElementById('file-logo')?.click();
+    });
+    (document.getElementById('file-logo') as HTMLInputElement)?.addEventListener('change', (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) uploadImg(file, 'logo_url', null, 'btn-logo', false);
+    });
   </script>
 </body>
 </html>

@@ -178,6 +178,24 @@ const seriesPosts = post.series
     <!-- Share -->
     <ShareButtons url={postUrl} title={post.title} />
 
+    <!-- Author card -->
+    {(config.author_name || config.author_avatar) && (
+      <div class="mt-8 p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center gap-4 not-prose">
+        {config.author_avatar && (
+          <img src={config.author_avatar} alt={config.author_name ?? 'Autor'} class="w-12 h-12 rounded-full object-cover shrink-0 border border-zinc-700" />
+        )}
+        <div class="flex-1 min-w-0">
+          <p class="font-medium text-zinc-100 text-sm">{config.author_name}</p>
+          {config.author_bio && (
+            <p class="text-xs text-zinc-400 mt-0.5 line-clamp-2">{config.author_bio}</p>
+          )}
+        </div>
+        <a href="/sobre" class="shrink-0 text-xs px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded-lg transition-colors">
+          Ver perfil
+        </a>
+      </div>
+    )}
+
     <!-- Edit link -->
     {Astro.locals.user && (
       <div class="mt-6 pt-6 border-t border-zinc-800">
