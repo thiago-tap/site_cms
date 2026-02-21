@@ -14,6 +14,8 @@ export const GET: APIRoute = async ({ locals }) => {
 
   const staticPages = [
     { loc: '/', priority: '1.0' },
+    { loc: '/tags', priority: '0.6' },
+    { loc: '/busca', priority: '0.5' },
     { loc: '/sobre', priority: '0.7' },
     { loc: '/contato', priority: '0.6' },
   ];

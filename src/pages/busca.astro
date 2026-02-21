@@ -3,25 +3,35 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import SEO from '../components/SEO.astro';
 import PostCard from '../components/PostCard.astro';
+import TrackingScripts from '../components/TrackingScripts.astro';
 import { getDb, posts } from '../lib/db';
-import { eq } from 'drizzle-orm';
+import { eq, like, or, and, desc } from 'drizzle-orm';
 import { getSettings } from '../lib/settings';
 import '../styles/global.css';
 
 const config = await getSettings(Astro.locals.runtime.env.DB);
-const query = Astro.url.searchParams.get('q')?.trim().toLowerCase() ?? '';
+const query = Astro.url.searchParams.get('q')?.trim() ?? '';
 
 let results: typeof posts.$inferSelect[] = [];
 
 if (query.length >= 2) {
   const db = getDb(Astro.locals.runtime.env.DB);
-  const allPosts = await db.select().from(posts).where(eq(posts.status, 'published')).all();
-  results = allPosts.filter((p) =>
-    p.title.toLowerCase().includes(query) ||
-    p.content.toLowerCase().includes(query) ||
-    p.excerpt?.toLowerCase().includes(query) ||
-    p.tags.toLowerCase().includes(query)
-  );
+  const q = `%${query}%`;
+  results = await db
+    .select()
+    .from(posts)
+    .where(
+      and(
+        eq(posts.status, 'published'),
+        or(
+          like(posts.title, q),
+          like(posts.excerpt, q),
+          like(posts.tags, q),
+        )
+      )
+    )
+    .orderBy(desc(posts.publishedAt))
+    .all();
 }
 ---
 
@@ -36,6 +46,7 @@ if (query.length >= 2) {
     siteUrl={Astro.locals.runtime.env.SITE_URL}
   />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <TrackingScripts />
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
   <Header />

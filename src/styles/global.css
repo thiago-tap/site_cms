@@ -149,3 +149,28 @@
   border-radius: 0.5rem;
   object-fit: contain;
 }
+
+/* ── Tema claro: inverte a escala zinc do Tailwind v4 ──
+   Tailwind v4 usa CSS custom properties para cores, então sobrescrever
+   --color-zinc-* afeta todos os componentes automaticamente. */
+[data-theme="light"] {
+  --color-zinc-50:  oklch(14.52% 0.0046 265.52);
+  --color-zinc-100: oklch(19.78% 0.0046 265.52);
+  --color-zinc-200: oklch(27.37% 0.0047 258.42);
+  --color-zinc-300: oklch(37.39% 0.0061 280.89);
+  --color-zinc-400: oklch(44.25% 0.0116 284.99);
+  --color-zinc-500: oklch(55.16% 0.0148 285.94);
+  --color-zinc-600: oklch(70.54% 0.0073 286.29);
+  --color-zinc-700: oklch(87.16% 0.006 286.29);
+  --color-zinc-800: oklch(92.02% 0.004 286.32);
+  --color-zinc-900: oklch(96.73% 0.0033 264.54);
+  --color-zinc-950: oklch(98.5% 0.0018 247.84);
+  color-scheme: light;
+}
+
+/* Transição suave ao alternar tema (exceto scroll e animações) */
+*:not([style*="animation"]):not(#reading-progress) {
+  transition-property: background-color, border-color, color;
+  transition-duration: 0.2s;
+  transition-timing-function: ease;
+}
