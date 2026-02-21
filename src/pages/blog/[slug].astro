@@ -178,9 +178,6 @@ const seriesPosts = post.series
     <!-- Share -->
     <ShareButtons url={postUrl} title={post.title} />
 
-    <!-- Newsletter -->
-    <NewsletterForm enabled={config.newsletter_enabled === '1'} />
-
     <!-- Edit link -->
     {Astro.locals.user && (
       <div class="mt-6 pt-6 border-t border-zinc-800">
@@ -189,6 +186,20 @@ const seriesPosts = post.series
         </a>
       </div>
     )}
+
+    <!-- Newsletter -->
+    <NewsletterForm enabled={config.newsletter_enabled === '1'} />
+
+    <!-- Giscus comments -->
+    <GiscusComments
+      repo={config.giscus_repo}
+      repoId={config.giscus_repo_id}
+      category={config.giscus_category}
+      categoryId={config.giscus_category_id}
+    />
+
+    <!-- Related posts -->
+    <RelatedPosts posts={related} />
 
     <!-- Prev / Next navigation -->
     {(prevPost || nextPost) && (
@@ -211,17 +222,6 @@ const seriesPosts = post.series
         </div>
       </nav>
     )}
-
-    <!-- Related posts -->
-    <RelatedPosts posts={related} />
-
-    <!-- Giscus comments -->
-    <GiscusComments
-      repo={config.giscus_repo}
-      repoId={config.giscus_repo_id}
-      category={config.giscus_category}
-      categoryId={config.giscus_category_id}
-    />
   </main>
 
   <!-- Back to top button -->
